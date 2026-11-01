@@ -1,0 +1,69 @@
+"""Runtime configuration, loaded from the environment (and .env in development)."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+DATA_DIR = Path(os.getenv("SCRAPESMITH_DATA_DIR", BASE_DIR / "data"))
+JOBS_DIR = DATA_DIR / "jobs"
+DB_PATH = DATA_DIR / "scrapesmith.db"
+
+APP_NAME = "ScrapeSmith"
+APP_VERSION = "0.1.0"
+
+# LLM defaults — OpenCode Console inference is OpenAI-compatible.
+DEFAULT_PROVIDER = os.getenv("SCRAPESMITH_PROVIDER", "opencode")
+DEFAULT_BASE_URL = os.getenv(
+    "SCRAPESMITH_BASE_URL", "https://opencode.ai/inference/openai/v1"
+).rstrip("/")
+DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "minimax-m3")
+ENV_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
+
+LLM_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_LLM_TIMEOUT", "300"))
+LLM_MAX_TOKENS = int(os.getenv("SCRAPESMITH_LLM_MAX_TOKENS", "16000"))
+MAX_REPAIR_ATTEMPTS = int(os.getenv("SCRAPESMITH_MAX_REPAIRS", "2"))
+
+# Discovery limits
+FETCH_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_FETCH_TIMEOUT", "25"))
+MAX_HTML_BYTES = int(os.getenv("SCRAPESMITH_MAX_HTML_BYTES", "4_000_000"))
+SKELETON_MAX_CHARS = int(os.getenv("SCRAPESMITH_SKELETON_CHARS", "45000"))
+ALLOW_PRIVATE_NETWORKS = os.getenv("SCRAPESMITH_ALLOW_PRIVATE", "0") == "1"
+
+# Sandbox run limits
+SANDBOX_TIMEOUT_SECONDS = int(os.getenv("SCRAPESMITH_SANDBOX_TIMEOUT", "180"))
+SANDBOX_MAX_PAGES = int(os.getenv("SCRAPESMITH_SANDBOX_MAX_PAGES", "1"))
+SANDBOX_MAX_OUTPUT_BYTES = int(os.getenv("SCRAPESMITH_SANDBOX_MAX_OUTPUT", "5_000_000"))
+
+USER_AGENT = os.getenv(
+    "SCRAPESMITH_USER_AGENT",
+    "ScrapeSmith/0.1 (+https://github.com/; polite research crawler)",
+)
+
+PROVIDER_PRESETS = {
+    "opencode": {
+        "label": "OpenCode (Console inference)",
+        "base_url": "https://opencode.ai/inference/openai/v1",
+        "models": ["minimax-m3", "kimi-k3", "glm-5.3", "mistral-large-4", "kimi-k2.6"],
+    },
+    "openai": {
+        "label": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "models": ["gpt-4.1", "gpt-4.1-mini", "gpt-4o"],
+    },
+    "openrouter": {
+        "label": "OpenRouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "models": ["anthropic/claude-sonnet-4", "google/gemini-2.5-pro"],
+    },
+    "custom": {
+        "label": "Custom OpenAI-compatible",
+        "base_url": "",
+        "models": [],
+    },
+}

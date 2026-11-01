@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Build {{ job_id }} — ScrapeSmith{% endblock %}
+
+{% block content %}
+<section class="job" data-job-id="{{ job_id }}">
+  <div class="job-head">
+    <div class="job-title">
+      <div class="job-badges">
+        <span class="pill" id="status-pill">queued</span>
+        <span class="muted small" id="job-model"></span>
+      </div>
+      <h1 id="job-url">Loading…</h1>
+      <p class="muted small" id="job-meta"></p>
+    </div>
+    <div class="job-actions">
+      <a class="btn btn-ghost" href="/">New build</a>
+      <a class="btn btn-primary" id="download" href="#" aria-disabled="true">Download zip</a>
+    </div>
+  </div>
+
+  <ol class="timeline" id="timeline">
+    <li data-step="discovering"><span class="tick"></span>Probe</li>
+    <li data-step="generating"><span class="tick"></span>Generate</li>
+    <li data-step="testing"><span class="tick"></span>Validate &amp; run</li>
+    <li data-step="done"><span class="tick"></span>Done</li>
+  </ol>
+
+  <div class="error-box" id="error-box" hidden></div>
+
+  <div class="job-grid">
+    <div class="panel log-panel">
+      <div class="panel-head">
+        <h2>Live log</h2>
+        <label class="check small"><input type="checkbox" id="autoscroll" checked> follow</label>
+      </div>
+      <pre class="log" id="log"></pre>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Mapper preview</h2>
+        <span class="muted small" id="preview-meta"></span>
+      </div>
+      <div id="preview" class="preview">
+        <p class="muted small empty">Waiting for the sandbox run…</p>
+      </div>
+      <div id="fill-rates" class="fill-rates"></div>
+    </div>
+  </div>
+
+  <div class="panel files-panel">
+    <div class="panel-head">
+      <h2>Generated bundle</h2>
+      <span class="muted small" id="files-meta"></span>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <pre class="code-view" id="file-view">Select a file above.</pre>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/job.js" defer></script>
+{% endblock %}

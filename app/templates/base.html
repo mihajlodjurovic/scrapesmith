@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ScrapeSmith — URL in, scraper out{% endblock %}</title>
+  <meta name="description" content="Turn one URL into a validated, polite Python scraper + mapper bundle.">
+  <meta name="theme-color" content="#0b0d12">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 3l7 7-3 3-7-7 3-3z"/>
+            <path d="M11 6L4 13l7 7 7-7"/>
+            <path d="M7 17l-3 3"/>
+          </svg>
+        </span>
+        <span class="brand-text">Scrape<em>Smith</em></span>
+      </a>
+      <nav class="site-nav">
+        <a class="nav-link" href="/api/docs">API</a>
+        <a class="nav-link" href="/health">Health</a>
+        <a class="btn btn-primary btn-sm" href="/#new">New build</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <span>FastAPI · httpx · SQLite · OpenAI-compatible models</span>
+      <span class="dot">·</span>
+      <span>Polite by default: robots.txt, delays, proxies.</span>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

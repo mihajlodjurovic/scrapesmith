@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <span class="eyebrow"><span class="pulse-dot"></span> URL in → scraper + mapper out</span>
+  <h1>Your scraping standard,<br><span class="gradient-text">generated on demand.</span></h1>
+  <p class="hero-sub">
+    Paste a public page, an API key and an optional proxy list. ScrapeSmith probes the site,
+    writes a scraper and a mapper that follow your production template, then proves the bundle
+    actually runs before you download it.
+  </p>
+</section>
+
+<section class="build-grid" id="new">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>New build</h2>
+      <span class="muted small">≈ 60–120s per job</span>
+    </div>
+
+    <form id="job-form" novalidate>
+      <div class="field">
+        <label for="url">Target URL</label>
+        <input id="url" name="url" type="text" required autocomplete="off"
+               placeholder="https://www.example.com/cars?page=1">
+        <p class="hint">A public listing page. The probe fetches it once, politely.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="provider">Provider</label>
+          <select id="provider" name="provider"></select>
+        </div>
+        <div class="field">
+          <label for="model">Model</label>
+          <input id="model" name="model" list="model-options" autocomplete="off" required>
+          <datalist id="model-options"></datalist>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="base_url">Base URL</label>
+        <input id="base_url" name="base_url" type="text" autocomplete="off"
+               placeholder="https://opencode.ai/inference/openai/v1">
+      </div>
+
+      <div class="field">
+        <label for="api_key">API key</label>
+        <input id="api_key" name="api_key" type="password" autocomplete="off"
+               placeholder="oc_sk_… (or leave empty to use OPENCODE_API_KEY from .env)">
+        <p class="hint" id="key-hint">Held in memory for this job only. Never written to the database.</p>
+      </div>
+
+      <div class="field">
+        <label for="proxies">Proxy list <span class="muted small">(optional, JSON or one per line)</span></label>
+        <textarea id="proxies" name="proxies" rows="4" spellcheck="false"
+                  placeholder='["http://user:pass@host:port", "host:port", "host:port:user:pass"]'></textarea>
+        <p class="hint">Used for the probe and written to <code>proxies.json</code> next to the scraper.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="country">Country value</label>
+          <input id="country" name="country" type="text" autocomplete="off" placeholder="germany">
+        </div>
+        <div class="field">
+          <label for="site_name">Site name</label>
+          <input id="site_name" name="site_name" type="text" autocomplete="off" placeholder="autoscout24.de">
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>Advanced instructions</summary>
+        <div class="field">
+          <label for="instructions">Extra rules for this build</label>
+          <textarea id="instructions" name="instructions" rows="3"
+                    placeholder="e.g. listing pages are behind /search?page=N; prefer the /api/v2/search JSON endpoint."></textarea>
+        </div>
+      </details>
+
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit" id="submit-btn">Generate scraper</button>
+        <span class="hint">Validation + sandbox run are part of the pipeline.</span>
+      </div>
+    </form>
+  </div>
+
+  <aside class="side">
+    <div class="panel compact">
+      <h2>What happens</h2>
+      <ol class="steps">
+        <li><strong>Probe</strong><span>robots.txt, headers, API candidates, embedded state, repeated blocks.</span></li>
+        <li><strong>Generate</strong><span>Your template + the probe go to the model, which returns 4 files.</span></li>
+        <li><strong>Validate</strong><span>AST, forbidden imports, secrets, contract functions, schema coverage.</span></li>
+        <li><strong>Prove it</strong><span>Subprocess run on one page, then mapper preview and fill rates.</span></li>
+      </ol>
+    </div>
+    <div class="panel compact">
+      <h2>Every bundle</h2>
+      <ul class="file-list">
+        <li><code>scraper.py</code><span>proxy pool, retries, API-first, JSONL</span></li>
+        <li><code>mapper.py</code><span>your canonical schema + enum maps</span></li>
+        <li><code>runner.sh</code><span>scrape → map, one command</span></li>
+        <li><code>probe.json</code><span>what the tool found, for audits</span></li>
+      </ul>
+    </div>
+  </aside>
+</section>
+
+<section class="recent">
+  <div class="section-head">
+    <h2>Recent builds</h2>
+    <span class="muted small" id="active-count"></span>
+  </div>
+  <div id="jobs-list" class="jobs-list">
+    <p class="muted small empty">No builds yet. Start with a small public page.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/index.js" defer></script>
+{% endblock %}

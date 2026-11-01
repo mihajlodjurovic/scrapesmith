@@ -112,6 +112,19 @@ def test_pipeline_stops_before_paying_when_robots_disallows(monkeypatch) -> None
     assert calls["build"] == 0
 
 
+def test_guess_source_prefers_the_verified_trace() -> None:
+    probe = dict(FAKE_PROBE)
+    assert pipeline._guess_source(probe) == "html"
+    assert pipeline._guess_source(
+        probe, [{"url": "https://example.com/list.rss", "observation": {}}]
+    ) == "feed"
+    assert pipeline._guess_source(
+        probe, [{"url": "https://example.com/list.json", "observation": {}}]
+    ) == "json api"
+    probe["embedded_state"] = [{"kind": "YouTube player response", "present": True}]
+    assert pipeline._guess_source(probe) == "embedded state"
+
+
 def test_describe_probe_returns_warn_tuple_for_block_markers() -> None:
     report = dict(FAKE_PROBE)
     report["block_markers"] = ["captcha", "just a moment"]

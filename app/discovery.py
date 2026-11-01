@@ -52,6 +52,38 @@ BLOCK_MARKERS = (
     "enable javascript",
 )
 
+SIGNAL_MARKERS = (
+    ("ytInitialPlayerResponse", "YouTube player response"),
+    ("ytInitialData", "YouTube initial data"),
+    ("__NEXT_DATA__", "Next.js data"),
+    ("self.__next_f.push", "React Server Components flight"),
+    ("__NUXT__", "Nuxt state"),
+    ("__APOLLO_STATE__", "Apollo state"),
+    ("window.__INITIAL_STATE__", "Redux initial state"),
+    ("application/ld+json", "JSON-LD"),
+)
+
+
+def html_signals(html: str, limit: int = 6) -> list[dict[str, str]]:
+    """Locate embedded payloads and return a small snippet around each marker."""
+    signals: list[dict[str, str]] = []
+    for marker, kind in SIGNAL_MARKERS:
+        index = html.find(marker)
+        if index == -1:
+            continue
+        start = max(0, index - 40)
+        signals.append(
+            {
+                "kind": kind,
+                "marker": marker,
+                "offset": str(index),
+                "snippet": html[start : index + 260],
+            }
+        )
+        if len(signals) >= limit:
+            break
+    return signals
+
 
 class DiscoveryError(RuntimeError):
     pass
@@ -194,6 +226,8 @@ def _embedded_state(html: str, soup: BeautifulSoup) -> list[dict[str, Any]]:
         "RSC flight (self.__next_f)": "self.__next_f.push" in html,
         "Apollo state": "__APOLLO_STATE__" in html,
         "Redux state": "window.__PRELOADED_STATE__" in html or "window.__INITIAL_STATE__" in html,
+        "YouTube player response": "ytInitialPlayerResponse" in html,
+        "YouTube initial data": "ytInitialData" in html,
     }
     return [{"kind": kind, "present": present} for kind, present in checks.items() if present]
 
@@ -328,6 +362,7 @@ async def probe(url: str, proxies: list[str] | ProxyPool | None = None) -> dict[
         },
         "json_ld": json_ld,
         "embedded_state": _embedded_state(html, soup),
+        "signals": html_signals(html),
         "api_candidates": _api_candidates(html, str(response.url)),
         "repeat_blocks": _repeat_blocks(soup),
         "block_markers": blocks,

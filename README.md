@@ -115,6 +115,9 @@ generated scraper:
 Accepted formats: `http://user:pass@host:port`, `host:port:user:pass`,
 `host:port`, JSON objects (`server`/`username`/`password`), or one per line.
 
+The job summary also records `probe_seconds`, `generate_seconds` and
+`sandbox_seconds`, so a slow run is easy to attribute.
+
 ### Records
 
 | Field | Meaning |

@@ -2,7 +2,13 @@
 
 from bs4 import BeautifulSoup
 
-from app.discovery import _api_candidates, _embedded_state, _repeat_blocks, _skeleton
+from app.discovery import (
+    _api_candidates,
+    _embedded_state,
+    _repeat_blocks,
+    _skeleton,
+    html_signals,
+)
 
 CARD_HTML = """
 <html><head><title>Used cars</title></head><body>
@@ -55,3 +61,22 @@ def test_skeleton_removes_scripts_and_keeps_structure() -> None:
     assert "<script" not in skeleton
     assert "Car number 3" in skeleton
     assert "div" in skeleton
+
+
+def test_html_signals_find_embedded_payloads() -> None:
+    html = (
+        "<html><body><script>var ytInitialPlayerResponse = {\"videoDetails\": {}};</script>"
+        "<script id='__NEXT_DATA__' type='application/json'>{}</script></body></html>"
+    )
+    signals = html_signals(html)
+    kinds = [signal["kind"] for signal in signals]
+    assert "YouTube player response" in kinds
+    assert "Next.js data" in kinds
+    assert all(signal["snippet"] for signal in signals)
+
+
+def test_embedded_state_recognises_youtube_blobs() -> None:
+    html = sample_html() + "<script>var ytInitialPlayerResponse = {};</script>"
+    soup = BeautifulSoup(html, "html.parser")
+    kinds = [item["kind"] for item in _embedded_state(html, soup)]
+    assert "YouTube player response" in kinds

@@ -67,7 +67,8 @@ The probe is deterministic and cheap; it never calls the model.
 |---|---|
 | `robots` | Policy gate and crawl-delay |
 | `api_candidates` | Same-origin JSON endpoints quoted in scripts |
-| `embedded_state` | `__NEXT_DATA__`, RSC flight, `__NUXT__`, Apollo/Redux |
+| `embedded_state` | `__NEXT_DATA__`, RSC flight, `__NUXT__`, Apollo/Redux, YouTube blobs |
+| `signals` | Small snippets around each embedded payload, so the model sees the shape without the whole page |
 | `repeat_blocks` | Sibling groups with the same tag/classes — the item boundary |
 | `json_ld` | `schema.org` types and keys |
 | `skeleton` | 45 KB max, scripts/styles stripped, class/id kept |
@@ -90,6 +91,11 @@ The observation is JSON:
 {"url": "...", "requested_url": "...", "status": 200, "content_type": "application/atom+xml",
  "bytes": 27141, "entry_count": 42, "proxy": "direct", "preview": "<feed>..."}
 ```
+
+For HTML responses the observation also carries `signals` — up to six embedded
+payloads with a short snippet (`ytInitialPlayerResponse`, `__NEXT_DATA__`, RSC
+flight, JSON-LD, …). That lets the model choose the payload without receiving the
+whole page.
 
 Constraints:
 

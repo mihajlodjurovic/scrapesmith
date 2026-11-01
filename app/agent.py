@@ -16,6 +16,7 @@ import httpx
 
 from . import llm
 from .config import FETCH_TIMEOUT_SECONDS, LLM_MAX_TOKENS
+from .discovery import html_signals
 from .generator import GenerationError, parse_files
 from .prompt import SYSTEM as SCRAPER_SYSTEM
 from .prompt import user_prompt
@@ -47,14 +48,19 @@ TOOL: fetch <absolute-url>
 The tool answers with a JSON observation:
 
 {"url": "...", "status": 200, "content_type": "...", "bytes": 12345,
- "entry_count": 12, "preview": "first 3000 characters"}
+ "entry_count": 12, "signals": [{"kind": "Next.js data", "marker": "__NEXT_DATA__",
+ "snippet": "..."}], "preview": "first 3000 characters"}
 
 Rules
 - Only URLs on the same site as the target (subdomains are allowed). Anything
   else is refused.
-- The page you were given may be a JavaScript shell with no data. Before giving
-  up, verify at least two candidates from the list above (feed/JSON siblings,
-  API paths, subdomains). A 403 on one route does not mean the site is closed.
+- The discovery report already describes the target page. Do not re-fetch that
+  exact URL unless you need a different variant (language, page, format).
+- The page may be a JavaScript shell with no data. Before giving up, verify at
+  least two candidates from the list above (feed/JSON siblings, API paths,
+  subdomains). A 403 on one route does not mean the site is closed.
+- `signals` lists embedded payloads found in the HTML; use the snippet to decide
+  which one holds the data.
 - Respect the site: no logins, no CAPTCHA solving, no private data, at most six
   requests with a small delay.
 - Stop calling tools as soon as you know where the data comes from, then output
@@ -151,6 +157,10 @@ class FetchTool:
         }
         if entry_count is not None:
             observation["entry_count"] = entry_count
+        if "html" in content_type:
+            signals = html_signals(text)
+            if signals:
+                observation["signals"] = signals
         return observation
 
 

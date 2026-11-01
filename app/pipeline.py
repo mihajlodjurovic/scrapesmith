@@ -119,6 +119,8 @@ async def run_job(job_id: str, api_key: str | None) -> None:
     started = time.perf_counter()
     cost = 0.0
     attempts = 0
+    probe_seconds = 0.0
+    generate_seconds = 0.0
 
     try:
         if mode == "unrestricted":
@@ -132,7 +134,10 @@ async def run_job(job_id: str, api_key: str | None) -> None:
 
         db.update_job(job_id, status="discovering")
         log("Step 1/3 · discovery", "step")
+        probe_started = time.perf_counter()
         probe = await discovery.probe(job["url"], pool)
+        probe_seconds = round(time.perf_counter() - probe_started, 1)
+        log(f"Discovery finished in {probe_seconds}s")
         (job_dir / "probe.json").write_text(
             json.dumps(probe, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -167,9 +172,11 @@ async def run_job(job_id: str, api_key: str | None) -> None:
 
         db.update_job(job_id, status="generating")
         log("Step 2/3 · generation", "step")
+        generate_started = time.perf_counter()
         bundle: dict[str, str] = {}
         usage: dict[str, Any] = {}
         repair_errors: list[str] = []
+        trace: list[dict[str, Any]] = []
         max_rounds = MAX_REPAIR_ATTEMPTS + 1
 
         for round_number in range(1, max_rounds + 1):
@@ -261,6 +268,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                 log("stderr:\n" + result["stderr"][-1500:], "code")
 
             if result["ok"]:
+                generate_seconds = round(time.perf_counter() - generate_started, 1)
                 db.update_job(
                     job_id,
                     status="done",
@@ -274,10 +282,13 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     },
                     summary={
                         "site": probe.get("final_url"),
-                        "source": _guess_source(probe),
+                        "source": _guess_source(probe, trace),
                         "raw_count": result["raw_count"],
                         "mapped_count": result["mapped_count"],
                         "seconds": round(time.perf_counter() - started, 1),
+                        "probe_seconds": probe_seconds,
+                        "generate_seconds": generate_seconds,
+                        "sandbox_seconds": result["duration_seconds"],
                         "cost_usd": round(cost, 6),
                         "attempts": attempts,
                         "model": job["model"],
@@ -318,12 +329,16 @@ async def run_job(job_id: str, api_key: str | None) -> None:
         )
 
 
-def _guess_source(probe: dict[str, Any]) -> str:
-    if probe.get("api_candidates"):
+def _guess_source(probe: dict[str, Any], trace: list[dict[str, Any]] | None = None) -> str:
+    urls = [str(entry.get("url", "")) for entry in (trace or [])]
+    if any(".rss" in url or "/feed" in url for url in urls):
+        return "feed"
+    if any(".json" in url for url in urls):
         return "json api"
     if probe.get("embedded_state"):
         return "embedded state"
-    structured = {"Product", "Vehicle", "Offer"}
-    if any(item.get("type") in structured for item in probe.get("json_ld", [])):
+    if probe.get("json_ld"):
         return "json-ld"
+    if probe.get("api_candidates"):
+        return "api candidates"
     return "html"

@@ -148,7 +148,7 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 
-cp .env.example .env               # add OPENCODE_API_KEY
+cp .env.example .env               # add SCRAPESMITH_API_KEY
 uvicorn app.main:app --reload
 ```
 
@@ -156,19 +156,26 @@ Open <http://127.0.0.1:8000>, paste a URL, press **Generate scraper**.
 
 ### Model setup
 
-Any OpenAI-compatible endpoint works. The default is OpenCode Go:
+Any OpenAI-compatible endpoint works. Pick a preset in the UI or set the three
+values yourself:
 
 ```ini
-OPENCODE_API_KEY=oc_sk_...
-SCRAPESMITH_PROVIDER=opencode-go
-SCRAPESMITH_BASE_URL=https://opencode.ai/inference/go/openai/v1
-SCRAPESMITH_MODEL=deepseek-v4.1-flash
+SCRAPESMITH_API_KEY=...
+SCRAPESMITH_BASE_URL=https://api.openai.com/v1
+SCRAPESMITH_MODEL=gpt-4.1-mini
 ```
 
-Create keys in the [OpenCode Console](https://opencode.ai/console) under
-**Account → Personal API keys** (or use OpenAI, OpenRouter, or a self-hosted
-gateway). Free-tier OpenCode models only work inside OpenCode and return `403`
-from external clients; paid models and Go work.
+| Provider | Base URL | Example model |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `gpt-4.1-mini` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `anthropic/claude-sonnet-4` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| Together | `https://api.together.xyz/v1` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` |
+| Ollama (local) | `http://127.0.0.1:11434/v1` | `qwen2.5-coder:14b` (no key) |
+| Custom | any compatible URL | any model id |
+
+The key can also be pasted per job; it is never stored. For local models without
+authentication, leave it empty.
 
 ## Politeness modes
 
@@ -232,14 +239,16 @@ The sandbox then:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `OPENCODE_API_KEY` | — | Fallback key if the form field is empty |
-| `SCRAPESMITH_BASE_URL` | Go inference | OpenAI-compatible base URL |
-| `SCRAPESMITH_MODEL` | `deepseek-v4.1-flash` | Default model |
+| `SCRAPESMITH_API_KEY` | — | Fallback key if the form field is empty |
+| `SCRAPESMITH_PROVIDER` | `openai` | Preset selected in the UI |
+| `SCRAPESMITH_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible base URL |
+| `SCRAPESMITH_MODEL` | `gpt-4.1-mini` | Default model |
 | `SCRAPESMITH_MODE` | `polite` | `polite` or `unrestricted` |
 | `SCRAPESMITH_MAX_REPAIRS` | `2` | Extra rounds after a failure |
 | `SCRAPESMITH_SANDBOX_TIMEOUT` | `180` | Per subprocess limit (s) |
 | `SCRAPESMITH_SANDBOX_MAX_PAGES` | `1` | Pages fetched during the proof |
 | `SCRAPESMITH_REASONING_EFFORT` | `low` | Keeps tokens for code |
+| `SCRAPESMITH_LLM_HEADERS` | — | Extra request headers as JSON, for gateways that require them |
 | `SCRAPESMITH_ALLOW_PRIVATE` | `0` | Allow local hosts (testing only) |
 
 ## Limitations

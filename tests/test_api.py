@@ -9,9 +9,9 @@ from app.routes import api as api_routes
 PAYLOAD = {
     "url": "example.com/list",
     "api_key": "test-key-not-a-real-secret",
-    "provider": "opencode",
-    "base_url": "https://opencode.ai/inference/openai/v1",
-    "model": "minimax-m3",
+    "provider": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4.1-mini",
     "proxies": ["1.2.3.4:8000:user:pass"],
     "fields": "title, price",
 }
@@ -28,7 +28,7 @@ def test_providers_endpoint(client: TestClient) -> None:
     response = client.get("/api/providers")
     assert response.status_code == 200
     data = response.json()
-    assert "opencode" in data["presets"]
+    assert "openai" in data["presets"]
     assert data["has_env_key"] is False
 
 
@@ -38,7 +38,7 @@ def test_create_job_does_not_store_the_key(client: TestClient, monkeypatch) -> N
     assert response.status_code == 201, response.text
     job = response.json()
     assert job["url"] == "https://example.com/list"
-    assert job["model"] == "minimax-m3"
+    assert job["model"] == "gpt-4.1-mini"
     assert job["status"] == "queued"
     assert "test-key-not-a-real-secret" not in response.text
 

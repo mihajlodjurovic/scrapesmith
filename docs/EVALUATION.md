@@ -9,7 +9,7 @@ produce bundles that run on the first attempt across different page shapes.
 | Item | Value |
 |---|---|
 | Date | 2026-10-31 |
-| Model | `deepseek-v4.1-flash` via OpenCode Go |
+| Model | `deepseek-v4.1-flash` on an OpenAI-compatible endpoint |
 | Parameters | `temperature=0.2`, `reasoning_effort=low`, `max_tokens=16000` |
 | Tool budget | 6 fetches, same registrable domain |
 | Sandbox | 1 page, 180 s timeout, no API key in env |

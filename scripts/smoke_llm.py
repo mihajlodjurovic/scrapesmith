@@ -25,7 +25,7 @@ def mask(key: str) -> str:
 
 async def main() -> int:
     if not ENV_API_KEY:
-        print("No OPENCODE_API_KEY found. Put it in .env and try again.")
+        print("No SCRAPESMITH_API_KEY found. Put it in .env and try again.")
         return 1
 
     print(f"base_url = {DEFAULT_BASE_URL}")

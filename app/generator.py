@@ -50,13 +50,12 @@ async def generate(
     base_url: str,
     api_key: str,
     model: str,
-    session_id: str = "",
 ) -> tuple[dict[str, str], dict[str, Any]]:
     messages = [
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": user_prompt(probe, options)},
     ]
-    return await _chat_parse(messages, base_url, api_key, model, session_id)
+    return await _chat_parse(messages, base_url, api_key, model)
 
 
 async def repair(
@@ -66,7 +65,6 @@ async def repair(
     base_url: str,
     api_key: str,
     model: str,
-    session_id: str = "",
 ) -> tuple[dict[str, str], dict[str, Any]]:
     rendered = "\n\n".join(
         f"### FILE: {name}\n```{_language(name)}\n{files[name]}```"
@@ -88,7 +86,7 @@ async def repair(
             ),
         },
     ]
-    return await _chat_parse(messages, base_url, api_key, model, session_id)
+    return await _chat_parse(messages, base_url, api_key, model)
 
 
 async def _chat_parse(
@@ -96,7 +94,6 @@ async def _chat_parse(
     base_url: str,
     api_key: str,
     model: str,
-    session_id: str,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     """One model call; if the bundle is incomplete, ask once more for all files."""
     text, usage = await llm.chat(
@@ -104,7 +101,6 @@ async def _chat_parse(
         api_key=api_key,
         model=model,
         messages=messages,
-        session_id=session_id,
     )
     try:
         return parse_files(text), usage
@@ -125,7 +121,6 @@ async def _chat_parse(
             api_key=api_key,
             model=model,
             messages=followup,
-            session_id=session_id,
         )
         merged = {"cost": llm.usage_cost(usage) + llm.usage_cost(usage2)}
         return parse_files(text2), merged

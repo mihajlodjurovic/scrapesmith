@@ -79,7 +79,6 @@ def test_agent_fetches_then_returns_bundle(monkeypatch) -> None:
             base_url="https://example.com/v1",
             api_key="test",
             model="test-model",
-            session_id="job-1",
             proxies=[],
         )
     )

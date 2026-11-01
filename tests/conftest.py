@@ -8,7 +8,7 @@ from pathlib import Path
 
 _TMP = Path(tempfile.mkdtemp(prefix="scrapesmith-tests-"))
 os.environ["SCRAPESMITH_DATA_DIR"] = str(_TMP)
-os.environ["OPENCODE_API_KEY"] = ""
+os.environ["SCRAPESMITH_API_KEY"] = ""
 os.environ["SCRAPESMITH_ALLOW_PRIVATE"] = "1"
 
 import pytest  # noqa: E402

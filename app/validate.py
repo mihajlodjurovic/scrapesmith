@@ -21,8 +21,9 @@ BANNED_ATTRIBUTES = {("os", "system"), ("os", "popen"), ("os", "remove"), ("os",
 
 SECRET_PATTERNS = (
     (re.compile(r"mongodb(?:\+srv)?://[^\s\"']+:[^\s\"']+@"), "hardcoded Mongo credentials"),
-    (re.compile(r"oc_sk_[A-Za-z0-9_\-]{8,}"), "hardcoded OpenCode API key"),
     (re.compile(r"sk-[A-Za-z0-9]{16,}"), "hardcoded API key"),
+    (re.compile(r"gsk_[A-Za-z0-9]{20,}"), "hardcoded API key"),
+    (re.compile(r"sk-or-v1-[A-Za-z0-9]{16,}"), "hardcoded API key"),
     (
         re.compile(
             r"https?://[^\s\"'/]+:[^\s\"'/]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?::\d+)?"

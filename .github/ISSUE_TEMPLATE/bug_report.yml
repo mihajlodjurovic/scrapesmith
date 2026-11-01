@@ -18,7 +18,7 @@ body:
     id: model
     attributes:
       label: Model
-      placeholder: deepseek-v4.1-flash via opencode-go
+      placeholder: gpt-4.1-mini via openai
     validations:
       required: true
   - type: textarea

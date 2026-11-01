@@ -68,7 +68,7 @@ store can be swapped without touching the bundle contract.
 to SQLite, and the sandbox environment excludes it.
 
 **Consequences.** Restarting the server loses nothing but the key context;
-`OPENCODE_API_KEY` in `.env` is the fallback.
+`SCRAPESMITH_API_KEY` in `.env` is the fallback.
 
 ## 7. Two politeness modes
 
@@ -94,16 +94,19 @@ free-form `attributes` object for domain fields.
 **Consequences.** Cross-site analysis is possible on the stable fields; vertical
 data stays available without schema migrations.
 
-## 9. Any OpenAI-compatible provider, DeepSeek by default
+## 9. A provider-neutral OpenAI-compatible client
 
-**Context.** Users bring different keys; OpenCode Go is the author's default.
+**Context.** Users bring different keys and endpoints. Hard-coding one vendor
+ages badly and makes the tool look like a wrapper for that vendor.
 
-**Decision.** One chat-completions client with configurable base URL and model.
-`deepseek-v4.1-flash` is the default because it is cheap, fast and good enough
-for template filling. `reasoning_effort=low` keeps tokens for code.
+**Decision.** One chat-completions client with a configurable base URL, model and
+key, plus presets for common providers and a free-form custom option. The
+default is `gpt-4.1-mini` on the OpenAI endpoint because it is widely available;
+the model is the user's choice.
 
 **Consequences.** Responses-API-only models need an adapter; documented as a
-limitation.
+limitation. Local models that need no key (Ollama) are supported by leaving the
+key empty.
 
 ## 10. No headless browser in v1
 

@@ -40,7 +40,7 @@ def test_pipeline_completes_and_previews(monkeypatch) -> None:
     monkeypatch.setattr(pipeline.discovery, "probe", fake_probe_factory())
     monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
 
-    job = db.create_job("https://example.com/list", "opencode", "https://api.test/v1", "test-model", {})
+    job = db.create_job("https://example.com/list", "openai", "https://api.test/v1", "test-model", {})
     asyncio.run(pipeline.run_job(job["id"], "secret-key-for-test"))
 
     updated = db.get_job(job["id"])
@@ -76,7 +76,7 @@ def test_pipeline_repairs_a_bad_bundle(monkeypatch) -> None:
     monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
     monkeypatch.setattr(pipeline.generator, "repair", fake_repair)
 
-    job = db.create_job("https://example.com/list", "opencode", "https://api.test/v1", "test-model", {})
+    job = db.create_job("https://example.com/list", "openai", "https://api.test/v1", "test-model", {})
     asyncio.run(pipeline.run_job(job["id"], "secret"))
 
     updated = db.get_job(job["id"])
@@ -102,7 +102,7 @@ def test_pipeline_stops_before_paying_when_robots_disallows(monkeypatch) -> None
     monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
 
     job = db.create_job(
-        "https://example.com/private", "opencode", "https://api.test/v1", "m", {}
+        "https://example.com/private", "openai", "https://api.test/v1", "m", {}
     )
     asyncio.run(pipeline.run_job(job["id"], "secret"))
 
@@ -149,7 +149,7 @@ def test_not_polite_mode_continues_despite_robots(monkeypatch) -> None:
 
     job = db.create_job(
         "https://example.com/private",
-        "opencode",
+        "openai",
         "https://api.test/v1",
         "m",
         {"mode": "unrestricted"},

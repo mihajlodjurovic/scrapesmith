@@ -185,7 +185,6 @@ async def build_bundle(
     base_url: str,
     api_key: str,
     model: str,
-    session_id: str,
     proxies: list[str],
     pool: ProxyPool | None = None,
 ) -> tuple[dict[str, str], float, list[dict[str, Any]]]:
@@ -205,7 +204,6 @@ async def build_bundle(
             model=model,
             messages=messages,
             max_tokens=LLM_MAX_TOKENS,
-            session_id=session_id,
         )
         cost += _cost(usage)
         messages.append({"role": "assistant", "content": text})
@@ -259,7 +257,6 @@ async def build_bundle(
         model=model,
         messages=messages,
         max_tokens=LLM_MAX_TOKENS,
-        session_id=session_id,
     )
     cost += _cost(usage)
     if "### FILE:" not in text:

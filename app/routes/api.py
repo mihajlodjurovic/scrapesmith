@@ -44,7 +44,7 @@ _tasks: set[asyncio.Task] = set()
 class JobCreate(BaseModel):
     url: str = Field(min_length=4, max_length=2000)
     api_key: str | None = Field(default=None, max_length=400)
-    provider: str = "opencode"
+    provider: str = DEFAULT_PROVIDER
     base_url: str = ""
     model: str = ""
     proxies: str | list | None = None
@@ -124,20 +124,18 @@ def providers() -> dict[str, Any]:
 async def create(request: Request, payload: JobCreate) -> dict[str, Any]:
     if payload.provider not in PROVIDER_PRESETS:
         raise HTTPException(status_code=400, detail="Unknown provider.")
-    base_url = (payload.base_url or PROVIDER_PRESETS[payload.provider]["base_url"]).rstrip("/")
-    model = payload.model or (
-        PROVIDER_PRESETS[payload.provider]["models"][0]
-        if PROVIDER_PRESETS[payload.provider]["models"]
-        else ""
-    )
+    preset = PROVIDER_PRESETS[payload.provider]
+    base_url = (payload.base_url or preset["base_url"] or DEFAULT_BASE_URL).rstrip("/")
+    model = payload.model or (preset["models"][0] if preset["models"] else "") or DEFAULT_MODEL
     if not model:
         raise HTTPException(status_code=400, detail="Model is required.")
     if not base_url:
         raise HTTPException(status_code=400, detail="Base URL is required.")
-    if not (payload.api_key or ENV_API_KEY):
+    needs_key = preset.get("requires_key", True)
+    if needs_key and not (payload.api_key or ENV_API_KEY):
         raise HTTPException(
             status_code=400,
-            detail="No API key: put OPENCODE_API_KEY in .env or paste a key.",
+            detail="No API key: set SCRAPESMITH_API_KEY in .env or paste one.",
         )
     if _active_jobs() >= MAX_ACTIVE_JOBS:
         raise HTTPException(status_code=429, detail="Too many jobs running. Wait a bit.")

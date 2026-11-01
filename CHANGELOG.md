@@ -18,8 +18,8 @@ First public version.
   scrapers.
 - Polite and unrestricted modes; disallowed paths stop before model spend.
 - Generic record schema with an `attributes` bag; optional requested fields.
-- OpenAI-compatible providers, OpenCode Go defaults, DeepSeek V4.1 Flash by
-  default, cost and stage timings per job.
+- Provider-neutral OpenAI-compatible client with presets (OpenAI, OpenRouter,
+  Groq, Together, Ollama, custom); no vendor lock-in.
 - FastAPI UI with SSE live log, file tabs, zip download, JSON API and OpenAPI
   docs.
 - 48 tests, ruff, GitHub Actions CI.

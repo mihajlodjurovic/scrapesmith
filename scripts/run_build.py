@@ -39,7 +39,7 @@ async def main() -> int:
     args = parser.parse_args()
 
     if not ENV_API_KEY:
-        print("No OPENCODE_API_KEY in .env.")
+        print("No SCRAPESMITH_API_KEY in .env.")
         return 1
 
     proxies = []

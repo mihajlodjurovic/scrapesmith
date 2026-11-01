@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -17,13 +18,16 @@ DB_PATH = DATA_DIR / "scrapesmith.db"
 APP_NAME = "ScrapeSmith"
 APP_VERSION = "0.1.0"
 
-# LLM defaults — OpenCode Go uses a dedicated endpoint so usage counts toward Go.
-DEFAULT_PROVIDER = os.getenv("SCRAPESMITH_PROVIDER", "opencode-go")
+# LLM defaults. Any OpenAI-compatible endpoint works: set the base URL, model
+# and key, or pick a preset in the UI.
+DEFAULT_PROVIDER = os.getenv("SCRAPESMITH_PROVIDER", "openai")
 DEFAULT_BASE_URL = os.getenv(
-    "SCRAPESMITH_BASE_URL", "https://opencode.ai/inference/go/openai/v1"
+    "SCRAPESMITH_BASE_URL", "https://api.openai.com/v1"
 ).rstrip("/")
-DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "deepseek-v4.1-flash")
-ENV_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
+DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "gpt-4.1-mini")
+ENV_API_KEY = (
+    os.getenv("SCRAPESMITH_API_KEY") or os.getenv("LLM_API_KEY") or ""
+).strip()
 
 LLM_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_LLM_TIMEOUT", "300"))
 LLM_MAX_TOKENS = int(os.getenv("SCRAPESMITH_LLM_MAX_TOKENS", "16000"))
@@ -46,41 +50,63 @@ DEFAULT_MODE = os.getenv("SCRAPESMITH_MODE", "polite")
 # Thinking models spend tokens on reasoning; keep that budget small for codegen.
 LLM_REASONING_EFFORT = os.getenv("SCRAPESMITH_REASONING_EFFORT", "low")
 
+
+def _extra_headers() -> dict[str, str]:
+    raw = os.getenv("SCRAPESMITH_LLM_HEADERS", "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(key): str(value) for key, value in data.items()}
+
+
+# Optional headers for gateways that require routing or version headers.
+LLM_EXTRA_HEADERS = _extra_headers()
+
 USER_AGENT = os.getenv(
     "SCRAPESMITH_USER_AGENT",
-    "ScrapeSmith/0.1 (+https://github.com/; polite research crawler)",
+    "ScrapeSmith/0.1 (+https://github.com/mihajlodjurovic/scrapesmith; polite crawler)",
 )
 
 PROVIDER_PRESETS = {
-    "opencode-go": {
-        "label": "OpenCode Go (subscription)",
-        "base_url": "https://opencode.ai/inference/go/openai/v1",
-        "models": [
-            "deepseek-v4.1-flash",
-            "glm-5.3-flash",
-            "minimax-m3.1-flash",
-            "glm-5.3",
-            "kimi-k3",
-        ],
-    },
-    "opencode": {
-        "label": "OpenCode (pay-as-you-go)",
-        "base_url": "https://opencode.ai/inference/openai/v1",
-        "models": ["minimax-m3", "kimi-k3", "mistral-large-4", "glm-5.3"],
-    },
     "openai": {
         "label": "OpenAI",
         "base_url": "https://api.openai.com/v1",
-        "models": ["gpt-4.1", "gpt-4.1-mini", "gpt-4o"],
+        "models": ["gpt-4.1-mini", "gpt-4.1", "gpt-4o"],
+        "requires_key": True,
     },
     "openrouter": {
         "label": "OpenRouter",
         "base_url": "https://openrouter.ai/api/v1",
         "models": ["anthropic/claude-sonnet-4", "google/gemini-2.5-pro"],
+        "requires_key": True,
+    },
+    "groq": {
+        "label": "Groq",
+        "base_url": "https://api.groq.com/openai/v1",
+        "models": ["llama-3.3-70b-versatile", "qwen-2.5-32b"],
+        "requires_key": True,
+    },
+    "together": {
+        "label": "Together AI",
+        "base_url": "https://api.together.xyz/v1",
+        "models": ["meta-llama/Llama-3.3-70B-Instruct-Turbo"],
+        "requires_key": True,
+    },
+    "ollama": {
+        "label": "Ollama (local)",
+        "base_url": "http://127.0.0.1:11434/v1",
+        "models": ["qwen2.5-coder:14b", "llama3.1:8b"],
+        "requires_key": False,
     },
     "custom": {
         "label": "Custom OpenAI-compatible",
         "base_url": "",
         "models": [],
+        "requires_key": False,
     },
 }

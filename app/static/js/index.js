@@ -33,6 +33,7 @@ const STATUS_LABEL = {
 };
 
 let presets = {};
+let hasEnvKey = false;
 
 function showError(message) {
   errorBox.textContent = message;
@@ -52,6 +53,18 @@ function fillModels(models) {
   }
 }
 
+function updateKeyHint() {
+  const preset = presets[providerSelect.value] || {};
+  if (hasEnvKey) {
+    keyHint.textContent =
+      'API key found in .env — leave the field empty to use it for this build.';
+  } else if (preset.requires_key === false) {
+    keyHint.textContent = 'No key required for this provider, for example a local model.';
+  } else {
+    keyHint.textContent = 'Held in memory for this job only. Never written to the database.';
+  }
+}
+
 function applyPreset(name, { keepValues = false } = {}) {
   const preset = presets[name];
   if (!preset) return;
@@ -60,6 +73,7 @@ function applyPreset(name, { keepValues = false } = {}) {
     modelInput.value = preset.models[0] || '';
   }
   fillModels(preset.models || []);
+  updateKeyHint();
 }
 
 async function loadProviders() {
@@ -76,12 +90,12 @@ async function loadProviders() {
   }
   providerSelect.value = data.defaults.provider;
   applyPreset(data.defaults.provider);
+  baseUrlInput.value = data.defaults.base_url || baseUrlInput.value;
+  modelInput.value = data.defaults.model || modelInput.value;
   updateBuildHint();
 
-  if (data.has_env_key) {
-    keyHint.textContent =
-      'OPENCODE_API_KEY found in .env — leave the field empty to use it for this build.';
-  }
+  hasEnvKey = Boolean(data.has_env_key);
+  updateKeyHint();
 }
 
 providerSelect.addEventListener('change', () => {

@@ -9,7 +9,7 @@ large rewrites.
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
-cp .env.example .env             # add OPENCODE_API_KEY for real builds
+cp .env.example .env             # add SCRAPESMITH_API_KEY for real builds
 uvicorn app.main:app --reload
 ```
 

@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import agent, db, discovery, generator, validate
+from . import agent, db, discovery, generator, llm, validate
 from .config import (
     DEFAULT_MODE,
     ENV_API_KEY,
@@ -77,15 +77,7 @@ def describe_probe(probe: dict[str, Any]) -> list[str]:
 
 
 def _usage_cost(usage: dict[str, Any]) -> float:
-    if not isinstance(usage, dict):
-        return 0.0
-    direct = usage.get("cost")
-    if isinstance(direct, (int, float)):
-        return float(direct)
-    nested = usage.get("opencode") or {}
-    if isinstance(nested, dict) and isinstance(nested.get("list_cost"), (int, float)):
-        return float(nested["list_cost"])
-    return 0.0
+    return llm.usage_cost(usage)
 
 
 def _file_index(job_dir: Path) -> list[dict[str, Any]]:
@@ -191,7 +183,6 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     base_url=job["base_url"],
                     api_key=secret,
                     model=job["model"],
-                    session_id=job_id,
                     proxies=proxies,
                     pool=pool,
                 )
@@ -223,7 +214,6 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     base_url=job["base_url"],
                     api_key=secret,
                     model=job["model"],
-                    session_id=job_id,
                 )
                 round_cost = _usage_cost(usage)
 

@@ -7,5 +7,6 @@ data/
 .pytest_cache/
 .ruff_cache/
 *.zip
+bundles/
 .DS_Store
 Thumbs.db

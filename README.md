@@ -1,11 +1,11 @@
-# ScrapeSmith
+﻿# ScrapeSmith
 
-**One URL in. A scraper and a mapper out — verified before you download it.**
+**One URL in. A scraper and a mapper out â€” verified before you download it.**
 
 [![CI](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml/badge.svg)](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-48%20passing-46d18c)
+![Tests](https://img.shields.io/badge/tests-51%20passing-46d18c)
 ![License](https://img.shields.io/badge/license-MIT-f5a524)
 
 ScrapeSmith is a local web app that turns a public page into a runnable Python
@@ -52,18 +52,18 @@ dangerous, or why `__NEXT_DATA__` matters. They paste a URL and get software.
 ## The five gates
 
 ```text
-URL ──► 1. PROBE      robots, headers, API candidates, embedded state,
-          │           repeated DOM blocks, trimmed skeleton
-          ▼
+URL â”€â”€â–º 1. PROBE      robots, headers, API candidates, embedded state,
+          â”‚           repeated DOM blocks, trimmed skeleton
+          â–¼
        2. VERIFY     the agent fetches candidate sources (.json, .rss,
-          │           /feed, API paths) before writing code
-          ▼
+          â”‚           /feed, API paths) before writing code
+          â–¼
        3. GENERATE   reference scraper + mapper + schema + verified source
-          │           → four files
-          ▼
+          â”‚           â†’ four files
+          â–¼
        4. VALIDATE   AST, forbidden imports, secret scan, contract,
-          │           schema coverage — no execution yet
-          ▼
+          â”‚           schema coverage â€” no execution yet
+          â–¼
        5. PROVE      subprocess run, one page, mapped preview,
                       per-field fill rates, repair loop on failure
 ```
@@ -85,8 +85,8 @@ actually returned `2xx`. The whole trace is saved as `agent_trace.json`.
 ```text
 jobs/<id>/
   scraper.py        proxy pool, retries, API-first fetch, JSONL output, CLI
-  mapper.py         raw → generic record schema, number/price parsing, stable ids
-  runner.sh         scrape → map in one command
+  mapper.py         raw â†’ generic record schema, number/price parsing, stable ids
+  runner.sh         scrape â†’ map in one command
   README.md         what the site is, what was assumed, what breaks first
   probe.json        the discovery report used for the build
   agent_trace.json  every source the model verified
@@ -130,7 +130,7 @@ The job summary also records `probe_seconds`, `generate_seconds` and
 | `description` | Cleaned summary or body |
 | `location` | City/region text when present |
 | `images` | Up to 20 absolute image URLs |
-| `attributes` | Domain fields (author, rating, mileage, tags, …) |
+| `attributes` | Domain fields (author, rating, mileage, tags, â€¦) |
 | `source` | Hostname |
 | `scraped_at` | ISO 8601 UTC timestamp |
 
@@ -177,12 +177,35 @@ SCRAPESMITH_MODEL=gpt-4.1-mini
 The key can also be pasted per job; it is never stored. For local models without
 authentication, leave it empty.
 
+## Use it from a coding agent
+
+The repository is designed to be handed to Codex, Claude Code, Cursor, Gemini CLI
+or Copilot. `AGENTS.md` is the contract; the same commands work everywhere:
+
+```bash
+# generate a bundle (JSON on stdout, logs on stderr, exit 0 = done)
+python scripts/build.py "https://example.com/list" \
+    --fields "title, price" --json --out ./bundles/example
+
+# hand-write or repair a bundle
+python scripts/scaffold_bundle.py ./bundles/example
+python scripts/validate_bundle.py ./bundles/example
+
+# check the configured model first
+python scripts/smoke_llm.py
+```
+
+`result.json` next to the bundle reports status, record counts, fill rates, the
+verified source, cost and the exact error if one occurred. Agent guides:
+[AGENTS.md](AGENTS.md) Â· [workflow](docs/AGENT-WORKFLOW.md) Â·
+[bundle contract](docs/BUNDLE-CONTRACT.md).
+
 ## Politeness modes
 
 | Mode | Behaviour |
 |---|---|
 | `polite` (default) | Fetches and enforces `robots.txt`. A disallowed path stops the build before any model tokens are spent. |
-| `unrestricted` (“not polite”) | Ignores `robots.txt`, logs a warning, records the choice on the job. Use only for sites you own or have written permission to scrape. |
+| `unrestricted` (â€œnot politeâ€) | Ignores `robots.txt`, logs a warning, records the choice on the job. Use only for sites you own or have written permission to scrape. |
 
 Both modes refuse logins, CAPTCHA solving and private data. The tool is a
 scraper generator, not a ban-evasion tool.
@@ -232,14 +255,14 @@ The sandbox then:
 - Keys live in memory for one job, are redacted from logs, never stored in the
   database, and are absent from the sandbox environment.
 - `proxies.json` is excluded from the download zip.
-- The sandbox is a guardrail, not a hardened jail — see
+- The sandbox is a guardrail, not a hardened jail â€” see
   [SECURITY.md](SECURITY.md).
 
 ## Configuration
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SCRAPESMITH_API_KEY` | — | Fallback key if the form field is empty |
+| `SCRAPESMITH_API_KEY` | â€” | Fallback key if the form field is empty |
 | `SCRAPESMITH_PROVIDER` | `openai` | Preset selected in the UI |
 | `SCRAPESMITH_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible base URL |
 | `SCRAPESMITH_MODEL` | `gpt-4.1-mini` | Default model |
@@ -248,7 +271,7 @@ The sandbox then:
 | `SCRAPESMITH_SANDBOX_TIMEOUT` | `180` | Per subprocess limit (s) |
 | `SCRAPESMITH_SANDBOX_MAX_PAGES` | `1` | Pages fetched during the proof |
 | `SCRAPESMITH_REASONING_EFFORT` | `low` | Keeps tokens for code |
-| `SCRAPESMITH_LLM_HEADERS` | — | Extra request headers as JSON, for gateways that require them |
+| `SCRAPESMITH_LLM_HEADERS` | â€” | Extra request headers as JSON, for gateways that require them |
 | `SCRAPESMITH_ALLOW_PRIVATE` | `0` | Allow local hosts (testing only) |
 
 ## Limitations
@@ -267,6 +290,9 @@ The sandbox then:
 
 | Document | Contents |
 |---|---|
+| [AGENTS.md](AGENTS.md) | Agent entry point: paths, commands, hard rules |
+| [docs/AGENT-WORKFLOW.md](docs/AGENT-WORKFLOW.md) | Decision tree, failure playbook, reporting |
+| [docs/BUNDLE-CONTRACT.md](docs/BUNDLE-CONTRACT.md) | Exact file/function/CLI contract |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, lifecycle, agent protocol, trust boundaries |
 | [DESIGN-DECISIONS.md](docs/DESIGN-DECISIONS.md) | Why a code bundle, why verification, why a subprocess |
 | [EVALUATION.md](docs/EVALUATION.md) | Method, results, threats to validity |
@@ -276,6 +302,7 @@ The sandbox then:
 
 ## Roadmap
 
+- [ ] MCP server exposing `build`, `validate` and `scaffold` as tools
 - [ ] Playwright fallback behind a flag, same bundle contract
 - [ ] Recipe mode: emit a declarative selector spec before code
 - [ ] Scheduled re-runs with schema-drift diffs
@@ -291,7 +318,7 @@ from JSON endpoints to server-rendered payloads, and mappers that must coerce
 postal codes without turning `3250.0` into `32500`.
 
 ScrapeSmith packages those rules so the next site takes an afternoon, not a
-sprint — and so someone who has never written a scraper can produce one without
+sprint â€” and so someone who has never written a scraper can produce one without
 having to know the pitfalls first.
 
 ## License

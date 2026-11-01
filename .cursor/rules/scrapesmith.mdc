@@ -1,0 +1,14 @@
+---
+description: ScrapeSmith scraper generation workflow
+alwaysApply: true
+---
+
+Read `AGENTS.md` first; it is the source of truth for this repository.
+
+- Generate: `python scripts/build.py "<url>" --json --out ./bundles/<site>`
+- Scaffold for manual work: `python scripts/scaffold_bundle.py <dir>`
+- Validate: `python scripts/validate_bundle.py <dir>`
+- Keep `polite` mode unless the user explicitly allows otherwise.
+- Never commit `.env`, `data/`, or `proxies.json`.
+- Definition of done: validation exits 0, at least one mapped record, and no
+  secrets were added.

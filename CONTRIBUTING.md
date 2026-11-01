@@ -55,6 +55,7 @@ change needs a live request, mock it or add a fixture.
 | `test_sandbox.py` | Subprocess run, preview, fill rates, failure tails |
 | `test_pipeline.py` | Statuses, robots gate, repair loop, cost, redaction |
 | `test_api.py` | Job creation, key handling, file access, download |
+| `test_cli.py` | Agent helpers: build result shape, validation, scaffolding |
 
 ## Commit style
 

@@ -19,13 +19,14 @@ browser ──HTTP──► FastAPI ──► discovery (ssrf-guarded) ──►
 | `app/routes/api.py` | Job creation, SSE log stream, file access, zip download |
 | `app/routes/pages.py` | Server-rendered UI shell |
 | `app/pipeline.py` | State machine: discover → verify/generate → validate → run → repair |
+| `app/cli.py` | Functions behind the agent-facing build/validate/scaffold scripts |
 | `app/discovery.py` | One polite probe: robots, headers, API candidates, embedded state, repeated blocks, skeleton |
 | `app/agent.py` | Bounded tool loop; the model may fetch candidate sources before writing code |
 | `app/prompt.py` | Reference bundle + schema + probe → prompt; candidate URL list |
 | `app/generator.py` | Parse `### FILE:` sections, repair prompts, incomplete-reply retry |
 | `app/validate.py` | AST, forbidden imports/calls, secret scan, contract and schema coverage |
 | `app/sandbox.py` | Subprocess execution, JSONL contract, preview and fill rates |
-| `app/llm.py` | OpenAI-compatible client, Go session header, cost extraction |
+| `app/llm.py` | OpenAI-compatible client and cost extraction |
 | `app/db.py` | SQLite job/event store; artifacts live on disk |
 | `app/reference/` | The golden scraper, mapper, runner and record schema |
 
@@ -178,6 +179,26 @@ stats() -> {total, available, cooling, blacklisted, requests, failures}
 `probe.json` stores the stats after the probe and the pipeline logs them, so a
 job that fails because every proxy is dead is distinguishable from a job that
 fails because the site is down.
+
+## Agent interface
+
+The UI is for humans; the scripts are the stable interface for coding agents.
+Both go through the same pipeline.
+
+| Script | Contract |
+|---|---|
+| `scripts/build.py <url> --json --out DIR` | JSON on stdout, logs on stderr, exit 0/2 |
+| `scripts/validate_bundle.py DIR --json` | Contract check, exit 0/1 |
+| `scripts/scaffold_bundle.py DIR` | Copy the reference bundle for manual editing |
+| `scripts/smoke_llm.py` | Verify provider, model and key |
+
+`app/cli.py` holds the reusable logic (`build`, `validate_bundle_dir`,
+`scaffold_bundle`, `copy_bundle`) so the scripts stay thin and testable. Every
+build writes `result.json` next to the bundle; the file is the machine-readable
+handoff between the app and the agent.
+
+`AGENTS.md` is the entry point, `docs/AGENT-WORKFLOW.md` the decision tree and
+`docs/BUNDLE-CONTRACT.md` the exact file/function contract.
 
 ## Scaling notes
 

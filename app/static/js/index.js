@@ -91,6 +91,7 @@ function payloadFromForm() {
     model: modelInput.value.trim(),
     api_key: document.getElementById('api_key').value.trim(),
     proxies: readProxies(document.getElementById('proxies').value),
+    mode: document.getElementById('mode').value,
     fields: document.getElementById('fields').value.trim(),
     instructions: document.getElementById('instructions').value.trim(),
   };

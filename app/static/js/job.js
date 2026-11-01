@@ -23,7 +23,7 @@ function init(root) {
 
   const READABLE = new Set([
     'scraper.py', 'mapper.py', 'runner.sh', 'README.md', 'NOTES.md',
-    'probe.json', 'raw.jsonl', 'mapped.jsonl',
+    'probe.json', 'agent_trace.json', 'raw.jsonl', 'mapped.jsonl',
   ]);
   const STATUS_LABEL = {
     queued: 'queued',

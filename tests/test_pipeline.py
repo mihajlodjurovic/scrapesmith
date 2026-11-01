@@ -33,12 +33,12 @@ def fake_probe_factory():
 
 
 def test_pipeline_completes_and_previews(monkeypatch) -> None:
-    async def fake_generate(**kwargs):
+    async def fake_build(**kwargs):
         assert kwargs["api_key"] == "secret-key-for-test"
-        return offline_bundle(), {"cost": 0.0012}
+        return offline_bundle(), 0.0012, []
 
     monkeypatch.setattr(pipeline.discovery, "probe", fake_probe_factory())
-    monkeypatch.setattr(pipeline.generator, "generate", fake_generate)
+    monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
 
     job = db.create_job("https://example.com/list", "opencode", "https://api.test/v1", "test-model", {})
     asyncio.run(pipeline.run_job(job["id"], "secret-key-for-test"))
@@ -62,9 +62,9 @@ def test_pipeline_repairs_a_bad_bundle(monkeypatch) -> None:
 
     calls = {"generate": 0, "repair": 0}
 
-    async def fake_generate(**kwargs):
+    async def fake_build(**kwargs):
         calls["generate"] += 1
-        return broken, {"cost": 0.001}
+        return broken, 0.001, []
 
     async def fake_repair(**kwargs):
         calls["repair"] += 1
@@ -73,7 +73,7 @@ def test_pipeline_repairs_a_bad_bundle(monkeypatch) -> None:
         return offline_bundle(), {"cost": 0.002}
 
     monkeypatch.setattr(pipeline.discovery, "probe", fake_probe_factory())
-    monkeypatch.setattr(pipeline.generator, "generate", fake_generate)
+    monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
     monkeypatch.setattr(pipeline.generator, "repair", fake_repair)
 
     job = db.create_job("https://example.com/list", "opencode", "https://api.test/v1", "test-model", {})
@@ -84,3 +84,59 @@ def test_pipeline_repairs_a_bad_bundle(monkeypatch) -> None:
     assert updated["attempts"] == 2
     assert updated["cost_usd"] == 0.003
     assert calls == {"generate": 1, "repair": 1}
+
+
+def test_pipeline_stops_before_paying_when_robots_disallows(monkeypatch) -> None:
+    async def strict_probe(url: str, proxies: list[str]) -> dict:
+        report = dict(FAKE_PROBE)
+        report["robots"] = {"found": True, "allowed": False, "crawl_delay": None}
+        return report
+
+    calls = {"build": 0}
+
+    async def fake_build(**kwargs):
+        calls["build"] += 1
+        return offline_bundle(), 0.0, []
+
+    monkeypatch.setattr(pipeline.discovery, "probe", strict_probe)
+    monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
+
+    job = db.create_job(
+        "https://example.com/private", "opencode", "https://api.test/v1", "m", {}
+    )
+    asyncio.run(pipeline.run_job(job["id"], "secret"))
+
+    updated = db.get_job(job["id"])
+    assert updated["status"] == "failed"
+    assert "robots.txt" in (updated["error"] or "")
+    assert calls["build"] == 0
+
+
+def test_not_polite_mode_continues_despite_robots(monkeypatch) -> None:
+    async def strict_probe(url: str, proxies: list[str]) -> dict:
+        report = dict(FAKE_PROBE)
+        report["robots"] = {"found": True, "allowed": False, "crawl_delay": None}
+        return report
+
+    calls = {"build": 0}
+
+    async def fake_build(**kwargs):
+        calls["build"] += 1
+        return offline_bundle(), 0.0, []
+
+    monkeypatch.setattr(pipeline.discovery, "probe", strict_probe)
+    monkeypatch.setattr(pipeline.agent, "build_bundle", fake_build)
+
+    job = db.create_job(
+        "https://example.com/private",
+        "opencode",
+        "https://api.test/v1",
+        "m",
+        {"mode": "unrestricted"},
+    )
+    asyncio.run(pipeline.run_job(job["id"], "secret"))
+
+    updated = db.get_job(job["id"])
+    assert updated["status"] == "done"
+    assert updated["summary"]["mode"] == "unrestricted"
+    assert calls["build"] == 1

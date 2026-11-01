@@ -59,6 +59,11 @@ def test_unknown_provider_is_rejected(client: TestClient) -> None:
     assert response.status_code == 400
 
 
+def test_invalid_mode_is_rejected(client: TestClient) -> None:
+    response = client.post("/api/jobs", json={**PAYLOAD, "mode": "chaos"})
+    assert response.status_code == 422
+
+
 def test_missing_job_returns_404(client: TestClient) -> None:
     assert client.get("/api/jobs/nope").status_code == 404
     assert client.get("/api/jobs/nope/download").status_code == 404

@@ -81,6 +81,16 @@ uvicorn app.main:app --reload
 
 Open <http://127.0.0.1:8000>, paste a URL, press **Generate scraper**.
 
+### Politeness modes
+
+| Mode | Behaviour |
+|---|---|
+| `polite` (default) | Fetches and enforces `robots.txt`. A disallowed path stops the build before any model tokens are spent. |
+| `unrestricted` (“not polite”) | Ignores `robots.txt` and logs a warning. Use only for sites you own or have explicit permission to scrape. |
+
+Both modes still refuse logins, CAPTCHA solving and private data. The mode is
+stored on the job and shown in the generated bundle's summary.
+
 ### Using OpenCode inference (recommended)
 
 [OpenCode Console](https://opencode.ai/console) exposes an OpenAI-compatible
@@ -93,7 +103,7 @@ your plan:
 ```bash
 OPENCODE_API_KEY=oc_sk_...
 SCRAPESMITH_BASE_URL=https://opencode.ai/inference/go/openai/v1
-SCRAPESMITH_MODEL=glm-5.3
+SCRAPESMITH_MODEL=deepseek-v4.1-flash
 ```
 
 Pay-as-you-go Console keys use `https://opencode.ai/inference/openai/v1`.
@@ -116,8 +126,9 @@ docker run --rm -p 8000:8000 -e OPENCODE_API_KEY=oc_sk_... scrapesmith
 |---|---|---|
 | `OPENCODE_API_KEY` | — | Fallback key if the form field is empty |
 | `SCRAPESMITH_BASE_URL` | Go inference endpoint | OpenAI-compatible base URL |
-| `SCRAPESMITH_MODEL` | `glm-5.3` | Default model |
+| `SCRAPESMITH_MODEL` | `deepseek-v4.1-flash` | Default model |
 | `SCRAPESMITH_MAX_REPAIRS` | `2` | Extra generate attempts after failures |
+| `SCRAPESMITH_MODE` | `polite` | `polite` respects robots.txt; `unrestricted` ignores it |
 | `SCRAPESMITH_FETCH_TIMEOUT` | `25` | Discovery request timeout (s) |
 | `SCRAPESMITH_SANDBOX_TIMEOUT` | `180` | Per subprocess limit (s) |
 | `SCRAPESMITH_SANDBOX_MAX_PAGES` | `1` | Pages fetched during the proof run |

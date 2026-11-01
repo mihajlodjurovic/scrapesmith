@@ -8,8 +8,13 @@ import time
 from pathlib import Path
 from typing import Any
 
-from . import db, discovery, generator, validate
-from .config import ENV_API_KEY, MAX_REPAIR_ATTEMPTS, SANDBOX_MAX_PAGES
+from . import agent, db, discovery, generator, validate
+from .config import (
+    DEFAULT_MODE,
+    ENV_API_KEY,
+    MAX_REPAIR_ATTEMPTS,
+    SANDBOX_MAX_PAGES,
+)
 from .proxies import mask_proxy, parse_proxies
 from .sandbox import run_bundle
 
@@ -81,7 +86,7 @@ def _usage_cost(usage: dict[str, Any]) -> float:
 
 
 def _file_index(job_dir: Path) -> list[dict[str, Any]]:
-    names = ["scraper.py", "mapper.py", "runner.sh", "README.md", "probe.json"]
+    names = ["scraper.py", "mapper.py", "runner.sh", "README.md", "probe.json", "agent_trace.json"]
     index = []
     for name in names:
         path = job_dir / name
@@ -104,11 +109,18 @@ async def run_job(job_id: str, api_key: str | None) -> None:
     job_dir = db.job_dir(job_id)
     options = job.get("options") or {}
     proxies = parse_proxies(options.get("proxies"))
+    mode = str(options.get("mode") or DEFAULT_MODE).lower()
+    if mode not in {"polite", "unrestricted"}:
+        mode = "polite"
     started = time.perf_counter()
     cost = 0.0
     attempts = 0
 
     try:
+        if mode == "unrestricted":
+            log("Mode: not polite — robots.txt and terms are ignored by explicit choice.", "warn")
+        else:
+            log("Mode: polite — robots.txt and terms are respected.")
         if proxies:
             log(f"Proxy pool: {len(proxies)} entries (first: {mask_proxy(proxies[0])})")
         else:
@@ -127,34 +139,80 @@ async def run_job(job_id: str, api_key: str | None) -> None:
             else:
                 log(line)
 
+        robots = probe.get("robots") or {}
+        disallowed = bool(robots.get("found")) and not robots.get("allowed", True)
+        if disallowed and mode == "polite":
+            raise discovery.DiscoveryError(
+                "robots.txt disallows this path and the build is in polite mode, so it "
+                "stopped before spending model tokens. Switch to 'not polite' only if "
+                "you have permission for this site."
+            )
+        if disallowed:
+            log(
+                "robots.txt disallows this path; continuing because mode is 'not polite'.",
+                "warn",
+            )
+
         db.update_job(job_id, status="generating")
         log("Step 2/3 · generation", "step")
         bundle: dict[str, str] = {}
         usage: dict[str, Any] = {}
+        repair_errors: list[str] = []
         max_rounds = MAX_REPAIR_ATTEMPTS + 1
 
         for round_number in range(1, max_rounds + 1):
             attempts = round_number
             db.update_job(job_id, attempts=attempts)
+            round_cost = 0.0
             if round_number == 1:
                 log(f"Calling {job['model']} via {job['base_url']}")
-                bundle, usage = await generator.generate(
+                bundle, round_cost, trace = await agent.build_bundle(
                     probe=probe,
                     options=options,
                     base_url=job["base_url"],
                     api_key=secret,
                     model=job["model"],
                     session_id=job_id,
+                    proxies=proxies,
                 )
+                (job_dir / "agent_trace.json").write_text(
+                    json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                for entry in trace:
+                    observation = entry.get("observation") or {}
+                    if observation.get("error"):
+                        log(
+                            f"Tool fetch {entry.get('url')} -> {observation['error']}",
+                            "warn",
+                        )
+                    else:
+                        content_type = (observation.get("content_type") or "").split(";")[0]
+                        log(
+                            f"Tool fetch {observation.get('requested_url')} -> "
+                            f"{observation.get('status')} {content_type} "
+                            f"({observation.get('bytes')} B)",
+                            "llm",
+                        )
+                if trace:
+                    log(f"Agent verified {len(trace)} source(s) before writing code.")
             else:
                 log(f"Repair round {round_number - 1}/{MAX_REPAIR_ATTEMPTS}", "step")
+                bundle, usage = await generator.repair(
+                    files=bundle,
+                    errors=repair_errors,
+                    base_url=job["base_url"],
+                    api_key=secret,
+                    model=job["model"],
+                    session_id=job_id,
+                )
+                round_cost = _usage_cost(usage)
 
-            cost += _usage_cost(usage)
+            cost += round_cost
             db.update_job(job_id, cost_usd=round(cost, 6))
             log(
                 f"Model returned {len(bundle)} files "
                 f"({sum(len(v) for v in bundle.values()) / 1024:.1f} KB) "
-                f"· cost ${_usage_cost(usage):.4f}",
+                f"· cost ${round_cost:.4f}",
                 "llm",
             )
 
@@ -169,14 +227,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     log(error, "warn")
                 if round_number < max_rounds:
                     log("Asking the model to fix validation errors…")
-                    bundle, usage = await generator.repair(
-                        files=bundle,
-                        errors=errors,
-                        base_url=job["base_url"],
-                        api_key=secret,
-                        model=job["model"],
-                        session_id=job_id,
-                    )
+                    repair_errors = errors
                     continue
                 raise generator.GenerationError(
                     "Bundle still fails validation: " + "; ".join(errors[:5])
@@ -217,6 +268,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                         "cost_usd": round(cost, 6),
                         "attempts": attempts,
                         "model": job["model"],
+                        "mode": mode,
                     },
                 )
                 log(
@@ -230,14 +282,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                 log(error, "error")
             if round_number < max_rounds:
                 log("Asking the model to fix the runtime failure…", "warn")
-                bundle, usage = await generator.repair(
-                    files=bundle,
-                    errors=result["errors"],
-                    base_url=job["base_url"],
-                    api_key=secret,
-                    model=job["model"],
-                    session_id=job_id,
-                )
+                repair_errors = result["errors"]
                 continue
             raise generator.GenerationError(
                 "Sandbox run failed after repairs: " + "; ".join(result["errors"])[:800]

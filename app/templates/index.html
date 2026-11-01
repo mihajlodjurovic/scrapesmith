@@ -26,6 +26,15 @@
         <p class="hint">A public listing page. The probe fetches it once, politely.</p>
       </div>
 
+      <div class="field">
+        <label for="mode">Mode</label>
+        <select id="mode" name="mode">
+          <option value="polite" selected>Polite — respect robots.txt and terms</option>
+          <option value="unrestricted">Not polite — ignore robots.txt (explicit choice)</option>
+        </select>
+        <p class="hint">Polite mode stops when robots.txt disallows the path. Not polite mode continues and logs a warning.</p>
+      </div>
+
       <div class="grid-2">
         <div class="field">
           <label for="provider">Provider</label>

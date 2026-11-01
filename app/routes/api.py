@@ -32,6 +32,7 @@ READABLE_FILES = {
     "README.md",
     "NOTES.md",
     "probe.json",
+    "agent_trace.json",
     "raw.jsonl",
     "mapped.jsonl",
 }
@@ -47,8 +48,17 @@ class JobCreate(BaseModel):
     base_url: str = ""
     model: str = ""
     proxies: str | list | None = None
+    mode: str = "polite"
     fields: str = Field(default="", max_length=500)
     instructions: str = Field(default="", max_length=2000)
+
+    @field_validator("mode")
+    @classmethod
+    def _valid_mode(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in {"polite", "unrestricted"}:
+            raise ValueError("mode must be 'polite' or 'unrestricted'")
+        return value
 
     @field_validator("url")
     @classmethod
@@ -139,6 +149,7 @@ async def create(request: Request, payload: JobCreate) -> dict[str, Any]:
         model,
         {
             "proxies": payload.proxies,
+            "mode": payload.mode,
             "fields": payload.fields,
             "instructions": payload.instructions,
         },

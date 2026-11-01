@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.generator import GenerationError, parse_files
-from app.prompt import user_prompt
+from app.prompt import candidate_urls, user_prompt
 
 
 def model_reply() -> str:
@@ -71,3 +71,11 @@ def test_prompt_contains_schema_probe_and_fields() -> None:
     assert "prices are in EUR" in prompt
     assert "example.com/api/items" in prompt
     assert "CANONICAL_KEYS" in prompt
+
+
+def test_candidate_urls_cover_feed_and_json_siblings() -> None:
+    urls = candidate_urls("https://example.com/a/b?x=1#frag")
+    assert "https://example.com/a/b.json" in urls
+    assert "https://example.com/a/b.rss" in urls
+    assert "https://example.com/feed" in urls
+    assert candidate_urls("") == []

@@ -56,14 +56,7 @@ async def generate(
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": user_prompt(probe, options)},
     ]
-    text, usage = await llm.chat(
-        base_url=base_url,
-        api_key=api_key,
-        model=model,
-        messages=messages,
-        session_id=session_id,
-    )
-    return parse_files(text), usage
+    return await _chat_parse(messages, base_url, api_key, model, session_id)
 
 
 async def repair(
@@ -86,7 +79,8 @@ async def repair(
             "role": "user",
             "content": (
                 "Your previous bundle failed validation or the sandbox run. "
-                "Fix it and return the complete bundle again in the same format.\n\n"
+                "Fix it and return the COMPLETE bundle again — all four files, "
+                "never a diff or a single file.\n\n"
                 "## Errors\n"
                 + "\n".join(f"- {error}" for error in errors)
                 + "\n\n## Previous bundle\n"
@@ -94,6 +88,17 @@ async def repair(
             ),
         },
     ]
+    return await _chat_parse(messages, base_url, api_key, model, session_id)
+
+
+async def _chat_parse(
+    messages: list[dict[str, str]],
+    base_url: str,
+    api_key: str,
+    model: str,
+    session_id: str,
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """One model call; if the bundle is incomplete, ask once more for all files."""
     text, usage = await llm.chat(
         base_url=base_url,
         api_key=api_key,
@@ -101,7 +106,29 @@ async def repair(
         messages=messages,
         session_id=session_id,
     )
-    return parse_files(text), usage
+    try:
+        return parse_files(text), usage
+    except GenerationError as exc:
+        followup = messages + [
+            {"role": "assistant", "content": text},
+            {
+                "role": "user",
+                "content": (
+                    f"That reply was incomplete: {exc}. Return ALL four files now — "
+                    "scraper.py, mapper.py, runner.sh, README.md — each in its own "
+                    "### FILE: section with a fenced code block. No diffs."
+                ),
+            },
+        ]
+        text2, usage2 = await llm.chat(
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+            messages=followup,
+            session_id=session_id,
+        )
+        merged = {"cost": llm.usage_cost(usage) + llm.usage_cost(usage2)}
+        return parse_files(text2), merged
 
 
 def _language(name: str) -> str:

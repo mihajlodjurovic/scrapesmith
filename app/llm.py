@@ -2,13 +2,39 @@
 
 from __future__ import annotations
 
+import uuid
+
 import httpx
 
-from .config import DEFAULT_BASE_URL, LLM_MAX_TOKENS, LLM_TIMEOUT_SECONDS
+from .config import (
+    DEFAULT_BASE_URL,
+    LLM_MAX_TOKENS,
+    LLM_REASONING_EFFORT,
+    LLM_TIMEOUT_SECONDS,
+)
+
+# Go requires a stable session id on every request. Jobs pass their own id;
+# anything else in this process shares this one.
+_PROCESS_SESSION = f"scrapesmith-{uuid.uuid4().hex[:12]}"
 
 
 class LLMError(RuntimeError):
     """A model call failed in a way the user can act on."""
+
+
+def usage_cost(usage: dict) -> float:
+    """USD cost reported by the provider, when present."""
+    if not isinstance(usage, dict):
+        return 0.0
+    direct = usage.get("cost")
+    nested_block = usage.get("opencode")
+    nested = nested_block.get("list_cost") if isinstance(nested_block, dict) else None
+    values = [
+        float(value)
+        for value in (direct, nested)
+        if isinstance(value, (int, float))
+    ]
+    return max(values) if values else 0.0
 
 
 def _explain(status: int, body: str) -> str:
@@ -49,44 +75,54 @@ async def chat(
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    if LLM_REASONING_EFFORT and "opencode.ai" in url:
+        payload["reasoning_effort"] = LLM_REASONING_EFFORT
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "User-Agent": "ScrapeSmith/0.1",
+        "x-opencode-session": session_id or _PROCESS_SESSION,
     }
-    if session_id:
-        headers["x-opencode-session"] = session_id
     text_parts: list[str] = []
     usage: dict = {}
     try:
         async with httpx.AsyncClient(timeout=LLM_TIMEOUT_SECONDS) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as response:
-                if response.status_code >= 400:
-                    body = (await response.aread()).decode("utf-8", "replace")
-                    raise LLMError(_explain(response.status_code, body))
-                async for line in response.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    chunk = line[5:].strip()
-                    if not chunk or chunk == "[DONE]":
-                        continue
-                    try:
-                        data = httpx.Response(200, content=chunk).json()
-                    except Exception:
-                        continue
-                    if data.get("usage"):
-                        usage = data["usage"]
-                    for choice in data.get("choices", []):
-                        delta = choice.get("delta") or {}
-                        piece = delta.get("content")
-                        if piece:
-                            text_parts.append(piece)
-    except LLMError:
-        raise
+            response = await client.post(url, json=payload, headers=headers)
+            if response.status_code == 400 and "reasoning_effort" in response.text:
+                # Some models do not accept the parameter; retry once without it.
+                payload.pop("reasoning_effort", None)
+                response = await client.post(url, json=payload, headers=headers)
     except httpx.HTTPError as exc:
         raise LLMError(f"Network error talking to the model: {exc}") from exc
 
+    if response.status_code >= 400:
+        raise LLMError(_explain(response.status_code, response.text))
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise LLMError("Model returned a non-JSON response.") from exc
+
+    usage = data.get("usage") or {}
+    finish_reason = None
+    reasoning_chars = 0
+    for choice in data.get("choices") or []:
+        message = choice.get("message") or {}
+        finish_reason = choice.get("finish_reason") or finish_reason
+        reasoning_chars += len(message.get("reasoning_content") or "")
+        content = message.get("content")
+        if isinstance(content, str):
+            text_parts.append(content)
+        elif isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("text"):
+                    text_parts.append(str(part["text"]))
+
     text = "".join(text_parts).strip()
     if not text:
-        raise LLMError("Model returned an empty response.")
+        raise LLMError(
+            "Model returned no text "
+            f"(finish_reason={finish_reason}, reasoning_chars={reasoning_chars}). "
+            "Raise max tokens, lower reasoning effort, or pick a non-thinking model."
+        )
     return text, usage

@@ -22,7 +22,7 @@ DEFAULT_PROVIDER = os.getenv("SCRAPESMITH_PROVIDER", "opencode-go")
 DEFAULT_BASE_URL = os.getenv(
     "SCRAPESMITH_BASE_URL", "https://opencode.ai/inference/go/openai/v1"
 ).rstrip("/")
-DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "glm-5.3")
+DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "deepseek-v4.1-flash")
 ENV_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
 
 LLM_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_LLM_TIMEOUT", "300"))
@@ -40,6 +40,12 @@ SANDBOX_TIMEOUT_SECONDS = int(os.getenv("SCRAPESMITH_SANDBOX_TIMEOUT", "180"))
 SANDBOX_MAX_PAGES = int(os.getenv("SCRAPESMITH_SANDBOX_MAX_PAGES", "1"))
 SANDBOX_MAX_OUTPUT_BYTES = int(os.getenv("SCRAPESMITH_SANDBOX_MAX_OUTPUT", "5_000_000"))
 
+# Politeness mode. "polite" respects robots.txt; "unrestricted" ignores it.
+DEFAULT_MODE = os.getenv("SCRAPESMITH_MODE", "polite")
+
+# Thinking models spend tokens on reasoning; keep that budget small for codegen.
+LLM_REASONING_EFFORT = os.getenv("SCRAPESMITH_REASONING_EFFORT", "low")
+
 USER_AGENT = os.getenv(
     "SCRAPESMITH_USER_AGENT",
     "ScrapeSmith/0.1 (+https://github.com/; polite research crawler)",
@@ -50,10 +56,10 @@ PROVIDER_PRESETS = {
         "label": "OpenCode Go (subscription)",
         "base_url": "https://opencode.ai/inference/go/openai/v1",
         "models": [
-            "glm-5.3",
+            "deepseek-v4.1-flash",
             "glm-5.3-flash",
             "minimax-m3.1-flash",
-            "deepseek-v4.1-flash",
+            "glm-5.3",
             "kimi-k3",
         ],
     },

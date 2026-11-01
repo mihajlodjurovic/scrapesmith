@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from .config import SKELETON_MAX_CHARS
 
@@ -54,7 +55,11 @@ Hard rules
    Playwright, no Selenium, no headless browsers.
 9. If the discovery report is ambiguous or the page is blocked, still produce
    the most defensible scraper and say what you assumed in NOTES. Do not invent
-   API endpoints that are not in the report.
+   API endpoints that neither the report nor your own verification fetched.
+10. When the page has no repeated blocks, no API candidates and a short
+   skeleton, treat it as a JavaScript shell. Verify at least two structured
+   candidates (the feed/JSON siblings above, an API path, or a subdomain) and
+   base the scraper on whatever actually returned 2xx — not on the shell.
 
 Output format — exactly these sections, each with a fenced code block:
 
@@ -90,6 +95,7 @@ def user_prompt(probe: dict[str, Any], options: dict[str, Any]) -> str:
     skeleton = probe.get("skeleton", "")[:SKELETON_MAX_CHARS]
     slim = {key: value for key, value in probe.items() if key != "skeleton"}
     slim["skeleton"] = skeleton
+    candidates = candidate_urls(probe.get("final_url") or probe.get("url") or "")
 
     return f"""## Reference scraper (keep this plumbing)
 ```python
@@ -110,6 +116,9 @@ def user_prompt(probe: dict[str, Any], options: dict[str, Any]) -> str:
 - requested fields: {fields or "(none — infer semantic fields from the page)"}
 - extra instructions: {extra or "(none)"}
 
+## Candidate URLs worth verifying
+{chr(10).join(f"- {url}" for url in candidates)}
+
 ## Discovery report
 ```json
 {json.dumps(slim, indent=2, ensure_ascii=False)}
@@ -118,3 +127,25 @@ def user_prompt(probe: dict[str, Any], options: dict[str, Any]) -> str:
 Produce the four files now. The scraper must write one JSON object per line to
 the path passed with --out, and the mapper must read that file with --in.
 """
+
+
+def candidate_urls(url: str) -> list[str]:
+    if not url:
+        return []
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return []
+    base = url.split("#", 1)[0].split("?", 1)[0].rstrip("/")
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    candidates = [
+        f"{base}.json",
+        f"{base}.rss",
+        f"{base}/feed",
+        f"{origin}/feed",
+        f"{origin}/sitemap.xml",
+    ]
+    seen: list[str] = []
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.append(candidate)
+    return seen

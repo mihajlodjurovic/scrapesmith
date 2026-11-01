@@ -38,7 +38,7 @@ async def main() -> int:
             api_key=ENV_API_KEY,
             model=DEFAULT_MODEL,
             messages=[{"role": "user", "content": "Reply with exactly: ok"}],
-            max_tokens=32,
+            max_tokens=256,
             temperature=0,
         )
     except llm.LLMError as exc:

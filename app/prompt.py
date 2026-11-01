@@ -42,13 +42,17 @@ Hard rules
 5. Keep the plumbing from the reference scraper: load_proxies, ProxyPool,
    request, run, main, and the CLI flags --max-pages, --out, --proxies, --mongo.
    Site-specific code goes only into page_url / parse_items / extract_payload
-   and, in the mapper, into map_listing and the enum maps.
-6. The mapper must emit every key from schema.json (CANONICAL_KEYS must stay
-   complete). Normalise money, mileage and postal codes to plain integers.
-   Translate enum values into English.
-7. Standard library plus requests, beautifulsoup4 and pymongo only. No
+   and, in the mapper, into map_listing.
+6. Do not assume the site's domain. It may be products, cars, books, jobs,
+   articles, rentals or a directory. Infer the item boundaries and the semantic
+   fields from the discovery report and the HTML skeleton.
+7. Every mapped record must contain all CANONICAL_KEYS. Put domain-specific
+   fields (author, mileage, bedrooms, rating, seller, ...) into `attributes`
+   with snake_case keys, and include the requested fields when the page exposes
+   them. Normalise prices to numbers and keep the currency separate.
+8. Standard library plus requests, beautifulsoup4 and pymongo only. No
    Playwright, no Selenium, no headless browsers.
-8. If the discovery report is ambiguous or the page is blocked, still produce
+9. If the discovery report is ambiguous or the page is blocked, still produce
    the most defensible scraper and say what you assumed in NOTES. Do not invent
    API endpoints that are not in the report.
 
@@ -81,8 +85,7 @@ verify first, and what is likely to break when the site changes.
 
 
 def user_prompt(probe: dict[str, Any], options: dict[str, Any]) -> str:
-    country = options.get("country") or "unknown"
-    site_name = options.get("site_name") or ""
+    fields = (options.get("fields") or "").strip()
     extra = options.get("instructions") or ""
     skeleton = probe.get("skeleton", "")[:SKELETON_MAX_CHARS]
     slim = {key: value for key, value in probe.items() if key != "skeleton"}
@@ -98,14 +101,13 @@ def user_prompt(probe: dict[str, Any], options: dict[str, Any]) -> str:
 {_read("mapper.py")}
 ```
 
-## Canonical schema (must be fully covered)
+## Record schema (must be fully covered)
 ```json
 {schema_text()}
 ```
 
-## Site metadata
-- country value for the mapper: {country!r}
-- site name: {site_name or probe.get("final_url", "")}
+## Build metadata
+- requested fields: {fields or "(none — infer semantic fields from the page)"}
 - extra instructions: {extra or "(none)"}
 
 ## Discovery report

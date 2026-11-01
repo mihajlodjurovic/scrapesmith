@@ -55,16 +55,19 @@ def test_reply_without_markers_raises() -> None:
         parse_files("just some prose without file sections")
 
 
-def test_prompt_contains_schema_probe_and_country() -> None:
+def test_prompt_contains_schema_probe_and_fields() -> None:
     probe = {
         "final_url": "https://example.com/list",
         "status": 200,
         "api_candidates": [{"url": "https://example.com/api/items"}],
         "skeleton": "<html><body><div class='card'>x</div></body></html>",
     }
-    prompt = user_prompt(probe, {"country": "italy", "site_name": "example.com"})
+    prompt = user_prompt(
+        probe, {"fields": "author, rating", "instructions": "prices are in EUR"}
+    )
     assert "reference scraper" in prompt.lower()
-    assert "canonical schema" in prompt.lower()
-    assert "'italy'" in prompt
+    assert "record schema" in prompt.lower()
+    assert "author, rating" in prompt
+    assert "prices are in EUR" in prompt
     assert "example.com/api/items" in prompt
     assert "CANONICAL_KEYS" in prompt

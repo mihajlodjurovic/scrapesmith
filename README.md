@@ -30,8 +30,10 @@ ScrapeSmith encodes the boring parts once:
   `Retry-After` awareness, no CAPTCHA or login bypass.
 - **Proxies are first-class.** Parsed, rotated, cooled down on 401/403/407/429,
   blacklisted after repeated failures, never hardcoded.
-- **The mapper is part of the bundle.** Raw payload → canonical schema with
-  integer coercion, enum maps and stable IDs.
+- **The mapper is part of the bundle.** Raw payload → a generic record schema
+  (`id`, `url`, `title`, `price`, `currency`, `description`, `location`,
+  `images`, `source`, `scraped_at`) plus a free-form `attributes` object for
+  domain fields. Works for products, cars, books, jobs, rentals or articles.
 - **Validated, not trusted.** AST checks, forbidden imports, secret scanning,
   contract functions, schema coverage — then a real subprocess run.
 
@@ -121,7 +123,7 @@ docker run --rm -p 8000:8000 -e OPENCODE_API_KEY=oc_sk_... scrapesmith
 ```
 jobs/<id>/
   scraper.py    proxy pool, retries/backoff, API-first fetch, JSONL output, CLI
-  mapper.py     raw → canonical schema, integer coercion, enum maps, stable ids
+  mapper.py     raw → generic record schema, price/number parsing, stable ids
   runner.sh     scrape → map in one command
   README.md     what the site is, what was assumed, what breaks first
   probe.json    discovery report used for the build
@@ -135,6 +137,26 @@ Generated scrapers accept:
 ```bash
 python scraper.py --max-pages 5 --out raw.jsonl --proxies proxies.json [--mongo URI]
 ```
+
+### Records
+
+Every mapped row contains:
+
+| Field | Meaning |
+|---|---|
+| `id` | Stable across runs: source id, URL, or a hash |
+| `url` | Absolute link to the item, when one exists |
+| `title` | Headline as shown on the page |
+| `price` / `currency` | Numeric amount and ISO code/symbol, kept separate |
+| `description` | Cleaned summary or body text |
+| `location` | City/region text if present |
+| `images` | Up to 20 absolute image URLs |
+| `attributes` | Everything else the page exposes, snake_case |
+| `source` | Hostname |
+| `scraped_at` | ISO 8601 UTC timestamp |
+
+Domain-specific data lives in `attributes`, so one schema covers every vertical.
+Optional **Fields to capture** in the form nudges the model (e.g. `author, rating`).
 
 ## Validation contract
 

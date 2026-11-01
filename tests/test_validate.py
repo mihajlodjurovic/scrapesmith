@@ -47,9 +47,9 @@ def test_hardcoded_credentials_are_rejected() -> None:
 
 def test_missing_schema_field_is_rejected() -> None:
     bundle = good_bundle()
-    bundle["mapper.py"] = bundle["mapper.py"].replace('    "vin",\n', "", 1)
+    bundle["mapper.py"] = bundle["mapper.py"].replace('    "title",\n', "", 1)
     errors = validate_bundle(bundle)
-    assert any("CANONICAL_KEYS" in error and "vin" in error for error in errors)
+    assert any("CANONICAL_KEYS" in error and "title" in error for error in errors)
 
 
 def test_missing_contract_function_is_rejected() -> None:

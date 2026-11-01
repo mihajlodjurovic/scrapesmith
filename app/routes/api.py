@@ -41,8 +41,7 @@ class JobCreate(BaseModel):
     base_url: str = ""
     model: str = ""
     proxies: str | list | None = None
-    country: str = Field(default="", max_length=60)
-    site_name: str = Field(default="", max_length=120)
+    fields: str = Field(default="", max_length=500)
     instructions: str = Field(default="", max_length=2000)
 
     @field_validator("url")
@@ -134,8 +133,7 @@ async def create(request: Request, payload: JobCreate) -> dict[str, Any]:
         model,
         {
             "proxies": payload.proxies,
-            "country": payload.country,
-            "site_name": payload.site_name,
+            "fields": payload.fields,
             "instructions": payload.instructions,
         },
     )

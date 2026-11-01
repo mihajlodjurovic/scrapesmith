@@ -13,7 +13,7 @@ PAYLOAD = {
     "base_url": "https://opencode.ai/inference/openai/v1",
     "model": "minimax-m3",
     "proxies": ["1.2.3.4:8000:user:pass"],
-    "country": "italy",
+    "fields": "title, price",
 }
 
 

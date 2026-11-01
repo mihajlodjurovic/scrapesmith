@@ -91,8 +91,7 @@ function payloadFromForm() {
     model: modelInput.value.trim(),
     api_key: document.getElementById('api_key').value.trim(),
     proxies: readProxies(document.getElementById('proxies').value),
-    country: document.getElementById('country').value.trim(),
-    site_name: document.getElementById('site_name').value.trim(),
+    fields: document.getElementById('fields').value.trim(),
     instructions: document.getElementById('instructions').value.trim(),
   };
 }

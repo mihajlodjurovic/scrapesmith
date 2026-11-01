@@ -58,15 +58,11 @@
         <p class="hint">Used for the probe and written to <code>proxies.json</code> next to the scraper.</p>
       </div>
 
-      <div class="grid-2">
-        <div class="field">
-          <label for="country">Country value</label>
-          <input id="country" name="country" type="text" autocomplete="off" placeholder="germany">
-        </div>
-        <div class="field">
-          <label for="site_name">Site name</label>
-          <input id="site_name" name="site_name" type="text" autocomplete="off" placeholder="autoscout24.de">
-        </div>
+      <div class="field">
+        <label for="fields">Fields to capture <span class="muted small">(optional)</span></label>
+        <input id="fields" name="fields" type="text" autocomplete="off"
+               placeholder="author, rating, availability, seller">
+        <p class="hint">Extra data you want in <code>attributes</code>. Leave empty and the model infers them.</p>
       </div>
 
       <details class="advanced">
@@ -101,7 +97,7 @@
       <h2>Every bundle</h2>
       <ul class="file-list">
         <li><code>scraper.py</code><span>proxy pool, retries, API-first, JSONL</span></li>
-        <li><code>mapper.py</code><span>your canonical schema + enum maps</span></li>
+        <li><code>mapper.py</code><span>generic record schema + attributes</span></li>
         <li><code>runner.sh</code><span>scrape → map, one command</span></li>
         <li><code>probe.json</code><span>what the tool found, for audits</span></li>
       </ul>

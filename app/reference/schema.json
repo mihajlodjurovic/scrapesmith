@@ -1,43 +1,59 @@
 {
-  "version": 1,
-  "description": "Canonical listing schema shared by every ScrapeSmith mapper.",
+  "version": 2,
+  "description": "Generic record schema. Works for any listing, article, directory or table.",
   "required": [
-    "make", "model", "trim", "price", "year", "mileage", "vin", "colors",
-    "interior_color", "exterior_color", "link", "zip", "location", "certified",
-    "images", "id", "body_style_id", "body_style_name", "descriptionLabel",
-    "transmission", "drive_type", "model_name", "interior_color_full",
-    "exterior_color_full", "fuel_type", "zip_num", "certified_description",
-    "country", "record_saved"
+    "id", "url", "title", "price", "currency", "description",
+    "location", "images", "attributes", "source", "scraped_at"
   ],
   "fields": {
-    "make": {"type": "string", "example": "Volkswagen", "note": "Canonical brand, trimmed."},
-    "model": {"type": "string", "example": "Golf", "note": "Model without trim."},
-    "trim": {"type": "string", "example": "2.0 TDI Highline"},
-    "price": {"type": "integer", "example": 12900, "note": "Numeric, no currency symbols."},
-    "year": {"type": "integer", "example": 2019, "note": "First registration year."},
-    "mileage": {"type": "integer", "example": 87400, "note": "Kilometres."},
-    "vin": {"type": "string", "example": "WVWZZZ1KZAW123456"},
-    "colors": {"type": "string", "example": "Black"},
-    "interior_color": {"type": "string", "example": "Black"},
-    "exterior_color": {"type": "string", "example": "Black"},
-    "link": {"type": "string", "example": "https://site.example/listing/123"},
-    "zip": {"type": "string", "example": "11000"},
-    "location": {"type": "string", "example": "Beograd"},
-    "certified": {"type": "boolean", "example": false},
-    "images": {"type": "array[string]", "note": "Absolute image URLs, max 20."},
-    "id": {"type": "string", "note": "Stable across runs; source id or URL."},
-    "body_style_id": {"type": "string", "example": "hatchback"},
-    "body_style_name": {"type": "string", "example": "Hatchback"},
-    "descriptionLabel": {"type": "string", "example": "VW Golf 2.0 TDI"},
-    "transmission": {"type": "string", "enum": ["Manual", "Automatic", "Sequential"]},
-    "drive_type": {"type": "string", "example": "FWD"},
-    "model_name": {"type": "string", "note": "make + model + title, de-duplicated."},
-    "interior_color_full": {"type": "string"},
-    "exterior_color_full": {"type": "string"},
-    "fuel_type": {"type": "string", "enum": ["Petrol", "Diesel", "Electric", "Hybrid", "LPG", "CNG"]},
-    "zip_num": {"type": "integer", "note": "Postal code as int, never float."},
-    "certified_description": {"type": "string"},
-    "country": {"type": "string", "example": "germany"},
-    "record_saved": {"type": "string", "format": "date"}
+    "id": {
+      "type": "string",
+      "note": "Stable across runs: source id, URL, or a hash of the record."
+    },
+    "url": {
+      "type": "string",
+      "note": "Absolute link to the item detail page, when one exists."
+    },
+    "title": {
+      "type": "string",
+      "example": "Vintage mechanical keyboard",
+      "note": "Headline of the record as the site presents it."
+    },
+    "price": {
+      "type": "number",
+      "example": 89.99,
+      "note": "Numeric amount only, no currency symbols. Null when the site has no price."
+    },
+    "currency": {
+      "type": "string",
+      "example": "EUR",
+      "note": "ISO code when known, otherwise the symbol or text shown."
+    },
+    "description": {
+      "type": "string",
+      "note": "Short summary or the listing body, cleaned of HTML."
+    },
+    "location": {
+      "type": "string",
+      "example": "Berlin"
+    },
+    "images": {
+      "type": "array[string]",
+      "note": "Absolute image URLs, max 20."
+    },
+    "attributes": {
+      "type": "object",
+      "note": "Every other semantic field found on the item, snake_case keys. This is where domain-specific data lives (author, mileage, bedrooms, rating, ...)."
+    },
+    "source": {
+      "type": "string",
+      "example": "example.com",
+      "note": "Hostname the record came from."
+    },
+    "scraped_at": {
+      "type": "string",
+      "format": "date-time",
+      "note": "ISO 8601 UTC timestamp."
+    }
   }
 }

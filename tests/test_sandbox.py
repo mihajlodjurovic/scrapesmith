@@ -28,12 +28,12 @@ def parse_items(payload):
 
 def fetch_page(page):
     return [
-        {"id": "1", "make": "VW", "model": "Golf", "price": "12.900 EUR",
-         "year": "2019", "mileage": "87.400 km", "zip": "11000",
-         "link": "https://example.com/1"},
-        {"id": "2", "make": "Audi", "model": "A3", "price": "15.500 EUR",
-         "year": "2020", "mileage": "60.000 km", "zip": "21000",
-         "link": "https://example.com/2"},
+        {"id": "1", "title": "VW Golf", "url": "https://example.com/1",
+         "price": "12.900 EUR", "location": "Berlin",
+         "images": ["https://example.com/1.jpg"], "make": "VW", "mileage": "87.400 km"},
+        {"id": "2", "title": "Audi A3", "url": "https://example.com/2",
+         "price": "15.500 EUR", "location": "Munich",
+         "images": ["https://example.com/2.jpg"], "make": "Audi", "mileage": "60.000 km"},
     ]
 
 
@@ -80,9 +80,12 @@ def test_bundle_runs_and_previews(tmp_path: Path) -> None:
     assert result["raw_count"] == 2
     assert result["mapped_count"] == 2
     assert len(result["preview"]) == 2
-    assert result["fill_rates"]["make"] == 100.0
+    assert result["fill_rates"]["title"] == 100.0
     assert result["fill_rates"]["price"] == 100.0
-    assert result["fill_rates"]["vin"] == 0.0
+    assert result["fill_rates"]["currency"] == 100.0
+    assert result["fill_rates"]["images"] == 100.0
+    assert result["fill_rates"]["description"] == 0.0
+    assert result["preview"][0]["attributes"]["make"] == "VW"
     assert (tmp_path / "proxies.json").exists()
 
 

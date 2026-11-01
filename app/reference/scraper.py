@@ -21,7 +21,6 @@ import requests
 
 BASE_URL = "https://example.com/search"
 SITE = "example.com"
-COUNTRY = "xx"
 
 DELAY = float(os.getenv("SCRAPESMITH_DELAY", "0.2"))
 TIMEOUT = float(os.getenv("SCRAPESMITH_TIMEOUT", "20"))

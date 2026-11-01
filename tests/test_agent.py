@@ -56,6 +56,8 @@ def test_registrable_domain_respects_public_suffixes() -> None:
     assert registrable_domain("a.b.com.br") == "b.com.br"
     assert registrable_domain("evil.co.rs") == "evil.co.rs"
     assert registrable_domain("evil.co.uk") != registrable_domain("target.co.uk")
+    assert registrable_domain("alice.github.io") == "alice.github.io"
+    assert registrable_domain("alice.github.io") != registrable_domain("bob.github.io")
 
 
 def test_tool_call_accepts_json_as_well_as_text() -> None:

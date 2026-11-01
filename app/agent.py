@@ -27,8 +27,13 @@ TOOL_LIMIT = 6
 SAME_SITE_MIN_DELAY = 0.4
 
 # Bundled public suffix snapshot: no network call, correct for co.uk / com.br /
-# co.rs and the rest. Never derive the site from "last two labels".
-_SUFFIXES = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)
+# co.rs and the rest. Private suffixes (github.io, herokuapp.com) are included so
+# two tenants are not treated as the same site.
+_SUFFIXES = tldextract.TLDExtract(
+    suffix_list_urls=(),
+    cache_dir=None,
+    include_psl_private_domains=True,
+)
 
 BROWSER_HEADERS = {
     "User-Agent": (

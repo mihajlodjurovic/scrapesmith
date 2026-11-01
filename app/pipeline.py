@@ -176,7 +176,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
             db.update_job(job_id, attempts=attempts)
             round_cost = 0.0
             if round_number == 1:
-                log(f"Calling {job['model']} via {job['base_url']}")
+                log(f"Calling {job['model']}")
                 bundle, round_cost, trace = await agent.build_bundle(
                     probe=probe,
                     options=options,

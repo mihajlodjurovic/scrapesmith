@@ -78,7 +78,7 @@ function init(root) {
 
   function renderHeader(job) {
     jobUrl.textContent = job.url;
-    jobModel.textContent = `${job.model} · ${job.provider}`;
+    jobModel.textContent = job.model;
     const bits = [];
     if (job.summary && job.summary.mapped_count) {
       bits.push(`${job.summary.mapped_count} mapped / ${job.summary.raw_count} raw`);

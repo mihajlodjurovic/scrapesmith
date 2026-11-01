@@ -34,6 +34,10 @@ HTML, a JavaScript shell with a feed, a real JSON API, and a site whose
 
 Total model spend for the seven builds: **under $0.06**.
 
+> Reddit was run in `unrestricted` mode purely to test feed discovery on a page
+> whose `robots.txt` disallows crawlers. The default `polite` mode refuses that
+> path; the override exists for sites you own or have written permission for.
+
 ### What the agent actually did
 
 - **books / quotes**: discovery already found the repeated block (20 `li`, 10

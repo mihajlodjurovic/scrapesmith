@@ -4,7 +4,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-40%20passing-46d18c)
+![Tests](https://img.shields.io/badge/tests-48%20passing-46d18c)
 ![License](https://img.shields.io/badge/license-MIT-f5a524)
 
 ScrapeSmith is a local web app that turns a public page into a runnable Python
@@ -196,8 +196,12 @@ Six targets, one model, no manual fixes:
 | `quotes.toscrape.com` | repeated blocks | done | 10 / 10 | $0.0066 |
 | Reddit thread | JS shell, JSON 403 | done via Atom | 42 / 42 | $0.0070 |
 | `jsonplaceholder.typicode.com/posts` | plain JSON | done | 100 / 100 | $0.0078 |
-| `autoscout24.com/lst` | SPA, robots disallow | stopped by policy | 0 | $0.0000 |
+| `autoscout24.com/lst` | SPA, robots disallow | policy stop (expected) | 0 | $0.0000 |
 | YouTube watch page | detail page, embedded JSON | done | 1 / 1 | $0.0176 |
+
+The Reddit row used `unrestricted` mode only to test feed discovery on a page
+whose `robots.txt` forbids crawlers. The default `polite` mode refuses that path;
+run the override only on sites you have permission to scrape.
 
 Method, threats to validity and reproduction commands:
 [docs/EVALUATION.md](docs/EVALUATION.md). The same AutoScout page, run explicitly

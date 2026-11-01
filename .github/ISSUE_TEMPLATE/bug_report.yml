@@ -1,0 +1,41 @@
+name: Bug report
+description: Something failed during a build
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please redact API keys, proxy credentials and private URLs.
+  - type: input
+    id: job
+    attributes:
+      label: Job id
+      description: The id shown in the URL of the job page.
+      placeholder: 3b2347ba3681
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      placeholder: deepseek-v4.1-flash via opencode-go
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Expected vs actual, plus the last lines of the live log.
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Artifacts
+      description: Paste `probe.json` or `agent_trace.json` if they help (redact credentials).
+      render: json
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Windows 11, Python 3.14, local server

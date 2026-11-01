@@ -2,6 +2,7 @@
 
 **One URL in. A scraper and a mapper out — verified before you download it.**
 
+[![CI](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml/badge.svg)](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-48%20passing-46d18c)
@@ -140,7 +141,7 @@ form nudges the model (`author, rating, availability`).
 ## Quickstart
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/mihajlodjurovic/scrapesmith.git
 cd scrapesmith
 
 python -m venv .venv
@@ -168,13 +169,6 @@ Create keys in the [OpenCode Console](https://opencode.ai/console) under
 **Account → Personal API keys** (or use OpenAI, OpenRouter, or a self-hosted
 gateway). Free-tier OpenCode models only work inside OpenCode and return `403`
 from external clients; paid models and Go work.
-
-### Docker
-
-```bash
-docker build -t scrapesmith .
-docker run --rm -p 8000:8000 -e OPENCODE_API_KEY=oc_sk_... scrapesmith
-```
 
 ## Politeness modes
 
@@ -269,6 +263,7 @@ The sandbox then:
 | [EVALUATION.md](docs/EVALUATION.md) | Method, results, threats to validity |
 | [SECURITY.md](SECURITY.md) | Threat model and controls |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, extension points |
+| [CHANGELOG.md](CHANGELOG.md) | What shipped in 0.1.0 |
 
 ## Roadmap
 

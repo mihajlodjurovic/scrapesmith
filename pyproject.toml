@@ -1,8 +1,35 @@
 [project]
 name = "scrapesmith"
 version = "0.1.0"
-description = "Turn a URL into a validated, polite Python scraper + mapper bundle."
+description = "Turn one URL into a validated, polite Python scraper and mapper bundle."
+readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Mihajlo Djurovic" }]
+keywords = [
+    "web-scraping",
+    "scraper-generator",
+    "llm",
+    "ai-agents",
+    "fastapi",
+    "data-extraction",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Code Generators",
+]
+
+[project.urls]
+Homepage = "https://github.com/mihajlodjurovic/scrapesmith"
+Repository = "https://github.com/mihajlodjurovic/scrapesmith"
+Issues = "https://github.com/mihajlodjurovic/scrapesmith/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

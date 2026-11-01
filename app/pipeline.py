@@ -137,7 +137,6 @@ async def run_job(job_id: str, api_key: str | None) -> None:
         probe_started = time.perf_counter()
         probe = await discovery.probe(job["url"], pool)
         probe_seconds = round(time.perf_counter() - probe_started, 1)
-        log(f"Discovery finished in {probe_seconds}s")
         (job_dir / "probe.json").write_text(
             json.dumps(probe, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -155,6 +154,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                 f"{stats['cooling']} cooling · {stats['blacklisted']} blacklisted · "
                 f"{stats['requests']} requests / {stats['failures']} failures"
             )
+        log(f"Discovery finished in {probe_seconds}s")
 
         robots = probe.get("robots") or {}
         disallowed = bool(robots.get("found")) and not robots.get("allowed", True)

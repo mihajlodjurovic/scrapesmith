@@ -188,7 +188,7 @@ scraper generator, not a ban-evasion tool.
 
 ## Evaluation snapshot
 
-Five targets, one model, no manual fixes:
+Six targets, one model, no manual fixes:
 
 | Target | Shape | Outcome | Records | Cost |
 |---|---|---|---:|---:|
@@ -197,6 +197,7 @@ Five targets, one model, no manual fixes:
 | Reddit thread | JS shell, JSON 403 | done via Atom | 42 / 42 | $0.0070 |
 | `jsonplaceholder.typicode.com/posts` | plain JSON | done | 100 / 100 | $0.0078 |
 | `autoscout24.com/lst` | SPA, robots disallow | stopped by policy | 0 | $0.0000 |
+| YouTube watch page | detail page, embedded JSON | done | 1 / 1 | $0.0176 |
 
 Method, threats to validity and reproduction commands:
 [docs/EVALUATION.md](docs/EVALUATION.md). The same AutoScout page, run explicitly

@@ -30,8 +30,9 @@ HTML, a JavaScript shell with a feed, a real JSON API, and a site whose
 | `jsonplaceholder.typicode.com/posts` | Plain JSON array | polite | done | 100 / 100 | $0.0078 | JSON |
 | `autoscout24.com/lst` | SPA + `__NEXT_DATA__` | polite | stopped by policy | 0 | $0.0000 | — |
 | `autoscout24.com/lst` | same page, explicit override | unrestricted | done | 20 / 20 | $0.0103 | embedded JSON |
+| YouTube watch page | detail page, embedded JSON | polite | done | 1 / 1 | $0.0176 | embedded state |
 
-Total model spend for the six builds: **under $0.05**.
+Total model spend for the seven builds: **under $0.06**.
 
 ### What the agent actually did
 
@@ -50,6 +51,11 @@ Total model spend for the six builds: **under $0.05**.
   behaviour, and the reason cost is $0.0000. The same URL, run explicitly in
   `unrestricted` mode, produced 20/20 records for $0.0103 from the embedded
   JSON, which shows the policy gate and the override are independent.
+- **YouTube**: the probe found `ytInitialPlayerResponse` and `ytInitialData`.
+  Because the signals (short snippets around each payload) were already in the
+  report, the model needed **zero tool calls**, parsed both blobs and used
+  JSON-LD `VideoObject` as a fallback. 120.8 s end to end, of which 2.1 s
+  discovery, ~112 s generation and 6.4 s sandbox.
 
 ## Quality signals
 
@@ -58,9 +64,9 @@ For the successful bundles:
 | Check | Result |
 |---|---|
 | Static contract violations | 0 |
-| Bundle completeness on first reply | 4/4 builds |
+| Bundle completeness on first reply | 6/6 builds |
 | Sandbox attempts used | 1 per build |
-| `pytest` suite | 40 tests, no network |
+| `pytest` suite | 48 tests, no network |
 | Generated code includes `ProxyPool`, `DELAY`, retries | yes |
 | Hardcoded credentials | none |
 | Fill rate, `title` / `url` / `id` | 100% |

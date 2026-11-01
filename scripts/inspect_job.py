@@ -42,6 +42,12 @@ def main() -> int:
     print(f"cost     : ${job['cost_usd']:.4f}")
     print(f"attempts : {job['attempts']}")
     print(f"seconds  : {summary.get('seconds')}")
+    print(
+        "stages   : "
+        f"probe {summary.get('probe_seconds')}s · "
+        f"generate {summary.get('generate_seconds')}s · "
+        f"sandbox {summary.get('sandbox_seconds')}s"
+    )
     print(f"source   : {summary.get('source')}")
     if job["error"]:
         print(f"error    : {job['error']}")

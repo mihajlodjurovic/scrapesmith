@@ -15,7 +15,7 @@ from .config import (
     MAX_REPAIR_ATTEMPTS,
     SANDBOX_MAX_PAGES,
 )
-from .proxies import mask_proxy, parse_proxies
+from .proxies import ProxyPool, mask_proxy, parse_proxies
 from .sandbox import run_bundle
 
 
@@ -112,6 +112,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
     job_dir = db.job_dir(job_id)
     options = job.get("options") or {}
     proxies = parse_proxies(options.get("proxies"))
+    pool = ProxyPool(proxies)
     mode = str(options.get("mode") or DEFAULT_MODE).lower()
     if mode not in {"polite", "unrestricted"}:
         mode = "polite"
@@ -131,7 +132,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
 
         db.update_job(job_id, status="discovering")
         log("Step 1/3 · discovery", "step")
-        probe = await discovery.probe(job["url"], proxies)
+        probe = await discovery.probe(job["url"], pool)
         (job_dir / "probe.json").write_text(
             json.dumps(probe, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -141,6 +142,14 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                 log(line[0], line[1])
             else:
                 log(line)
+
+        stats = probe.get("proxy_stats") or {}
+        if stats.get("total"):
+            log(
+                f"Proxy health: {stats['available']}/{stats['total']} available · "
+                f"{stats['cooling']} cooling · {stats['blacklisted']} blacklisted · "
+                f"{stats['requests']} requests / {stats['failures']} failures"
+            )
 
         robots = probe.get("robots") or {}
         disallowed = bool(robots.get("found")) and not robots.get("allowed", True)
@@ -177,6 +186,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     model=job["model"],
                     session_id=job_id,
                     proxies=proxies,
+                    pool=pool,
                 )
                 (job_dir / "agent_trace.json").write_text(
                     json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8"

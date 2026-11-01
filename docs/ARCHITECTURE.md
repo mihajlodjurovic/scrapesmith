@@ -151,6 +151,28 @@ data/jobs/<id>/
 
 SQLite runs in WAL mode; writes are short and serialized by SQLite itself.
 
+## Proxy health
+
+A job creates one `ProxyPool` (`app/proxies.py`) and shares it between discovery
+and the agent's fetch tool, so a proxy burned during the probe is not retried by
+the model. The generated scraper ships its own copy of the same rules because it
+runs later, outside the app.
+
+Selection is deterministic: fewest failures, then oldest last use. This avoids
+both hammering the same exit IP and randomly picking a known-bad one. Responses
+`401/403/407/429/503` trigger a cooldown; five consecutive failures blacklist the
+proxy; a success resets the counter. Direct is the final attempt, not the first.
+
+```text
+attempts(limit) -> [least_failing, next, ..., None]
+report(proxy, ok, status) -> failures/consecutive/cooldown/blacklist updates
+stats() -> {total, available, cooling, blacklisted, requests, failures}
+```
+
+`probe.json` stores the stats after the probe and the pipeline logs them, so a
+job that fails because every proxy is dead is distinguishable from a job that
+fails because the site is down.
+
 ## Scaling notes
 
 The single-node design is deliberate for v1. To scale:

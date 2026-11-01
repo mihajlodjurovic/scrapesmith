@@ -25,7 +25,7 @@ from .config import (
     SKELETON_MAX_CHARS,
     USER_AGENT,
 )
-from .proxies import mask_proxy
+from .proxies import ProxyPool, mask_proxy
 
 INTERESTING_HEADERS = (
     "content-type",
@@ -115,25 +115,32 @@ async def _fetch_once(
     return response, ("direct" if not proxy else mask_proxy(proxy))
 
 
-async def _fetch(url: str, proxies: list[str]) -> tuple[httpx.Response, str]:
-    attempts = list(proxies[:3]) + [None]
+async def _fetch(url: str, pool: ProxyPool) -> tuple[httpx.Response, str]:
     last_error: Exception | None = None
-    for proxy in attempts:
+    for proxy in pool.attempts(3):
         try:
             response, used = await _fetch_once(url, proxy)
-            if response.status_code < 500:
-                return response, used
-            last_error = DiscoveryError(f"proxy returned {response.status_code}")
         except Exception as exc:  # network, proxy auth, DNS
+            pool.report(proxy, False)
             last_error = exc
+            continue
+
+        if response.status_code < 500:
+            healthy = response.status_code not in (401, 403, 407, 429)
+            pool.report(proxy, healthy, response.status_code)
+            return response, used
+
+        pool.report(proxy, False, response.status_code)
+        last_error = DiscoveryError(f"proxy returned {response.status_code}")
+
     raise DiscoveryError(f"Could not fetch the page. Last error: {last_error}")
 
 
-async def _robots(url: str, proxies: list[str]) -> dict[str, Any]:
+async def _robots(url: str, pool: ProxyPool) -> dict[str, Any]:
     parsed = urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
-        response, _ = await _fetch(robots_url, proxies)
+        response, _ = await _fetch(robots_url, pool)
     except Exception:
         return {"found": False, "allowed": True, "crawl_delay": None, "note": "unreachable"}
 
@@ -278,14 +285,15 @@ def _headers(response: httpx.Response) -> dict[str, str]:
     return captured
 
 
-async def probe(url: str, proxies: list[str]) -> dict[str, Any]:
+async def probe(url: str, proxies: list[str] | ProxyPool | None = None) -> dict[str, Any]:
     """Fetch and describe a page. Returns a JSON-serialisable report."""
+    pool = proxies if isinstance(proxies, ProxyPool) else ProxyPool(proxies or [])
     url = url.strip()
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
     await _check_target(url)
 
-    response, used = await _fetch(url, proxies)
+    response, used = await _fetch(url, pool)
     body = response.content[:MAX_HTML_BYTES]
     html = body.decode(response.encoding or "utf-8", errors="replace")
     soup = BeautifulSoup(html, "html.parser")
@@ -304,8 +312,9 @@ async def probe(url: str, proxies: list[str]) -> dict[str, Any]:
         "content_type": response.headers.get("content-type", ""),
         "fetched_bytes": len(body),
         "proxy_used": used,
+        "proxy_stats": pool.stats(),
         "headers": _headers(response),
-        "robots": await _robots(url, proxies),
+        "robots": await _robots(url, pool),
         "title": title[:200],
         "description": (description_tag.get("content", "") if description_tag else "")[:300],
         "canonical": urljoin(url, canonical_tag["href"]) if canonical_tag else None,

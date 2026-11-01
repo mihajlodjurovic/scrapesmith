@@ -80,9 +80,11 @@ def load_proxies(path: str | Path) -> list[str]:
 class ProxyPool:
     def __init__(self, proxies: list[str]) -> None:
         self._proxies = list(proxies)
-        self._failures: dict[str, int] = {}
+        self._failures: dict[str, int] = {proxy: 0 for proxy in self._proxies}
+        self._consecutive: dict[str, int] = {proxy: 0 for proxy in self._proxies}
         self._cooldown: dict[str, float] = {}
         self._blacklist: dict[str, float] = {}
+        self._last_used: dict[str, float] = {}
         print(f"[proxy] pool size: {len(self._proxies)}")
 
     def pick(self) -> str | None:
@@ -93,23 +95,26 @@ class ProxyPool:
             if self._cooldown.get(proxy, 0) <= now and self._blacklist.get(proxy, 0) <= now
         ]
         if not usable:
-            usable = [proxy for proxy in self._proxies if self._blacklist.get(proxy, 0) <= now]
-        if not usable:
             return None
-        usable.sort(key=lambda proxy: self._failures.get(proxy, 0))
-        return random.choice(usable[:5])
+        usable.sort(key=lambda proxy: (self._failures.get(proxy, 0), self._last_used.get(proxy, 0)))
+        return usable[0]
 
     def report(self, proxy: str | None, ok: bool, status: int | None = None) -> None:
         if not proxy:
             return
+        now = time.time()
+        self._last_used[proxy] = now
         if ok:
             self._failures[proxy] = max(0, self._failures.get(proxy, 0) - 1)
+            self._consecutive[proxy] = 0
             return
+
         self._failures[proxy] = self._failures.get(proxy, 0) + 1
-        if status in (401, 403, 407, 429):
-            self._cooldown[proxy] = time.time() + PROXY_COOLDOWN_SECONDS
-        if self._failures[proxy] >= PROXY_BLACKLIST_AFTER:
-            self._blacklist[proxy] = time.time() + PROXY_COOLDOWN_SECONDS * 10
+        self._consecutive[proxy] = self._consecutive.get(proxy, 0) + 1
+        if status in (401, 403, 407, 429, 503):
+            self._cooldown[proxy] = now + PROXY_COOLDOWN_SECONDS
+        if self._consecutive[proxy] >= PROXY_BLACKLIST_AFTER:
+            self._blacklist[proxy] = now + PROXY_COOLDOWN_SECONDS * 10
             print(f"[proxy] blacklisted {proxy.split('@')[-1]}")
 
 

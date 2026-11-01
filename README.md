@@ -100,6 +100,21 @@ Generated scrapers accept:
 python scraper.py --max-pages 5 --out raw.jsonl --proxies proxies.json [--mongo URI]
 ```
 
+### Proxy rotation
+
+One `ProxyPool` serves the probe, the agent's verification fetches and the
+generated scraper:
+
+- least-failing, least-recently-used proxy first;
+- cooldown on `401/403/407/429/503`;
+- blacklist after five consecutive failures, reset on success;
+- direct connection only as the last attempt, never first;
+- health stats (`available/cooling/blacklisted/requests/failures`) written to
+  `probe.json` and the live log.
+
+Accepted formats: `http://user:pass@host:port`, `host:port:user:pass`,
+`host:port`, JSON objects (`server`/`username`/`password`), or one per line.
+
 ### Records
 
 | Field | Meaning |

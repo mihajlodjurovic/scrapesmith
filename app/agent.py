@@ -19,7 +19,7 @@ from .config import FETCH_TIMEOUT_SECONDS, LLM_MAX_TOKENS
 from .generator import GenerationError, parse_files
 from .prompt import SYSTEM as SCRAPER_SYSTEM
 from .prompt import user_prompt
-from .proxies import mask_proxy
+from .proxies import ProxyPool, mask_proxy
 
 TOOL_LIMIT = 6
 SAME_SITE_MIN_DELAY = 0.4
@@ -77,11 +77,14 @@ def registrable_domain(host: str) -> str:
 class FetchTool:
     target_url: str
     proxies: list[str] = field(default_factory=list)
+    pool: ProxyPool | None = None
     calls: int = 0
     limit: int = TOOL_LIMIT
 
     def __post_init__(self) -> None:
         self.host = registrable_domain(urlparse(self.target_url).hostname or "")
+        if self.pool is None:
+            self.pool = ProxyPool(self.proxies)
 
     def allowed(self, url: str) -> bool:
         parsed = urlparse(url)
@@ -99,7 +102,7 @@ class FetchTool:
             }
 
         self.calls += 1
-        attempts: list[str | None] = list(self.proxies[:2]) + [None]
+        attempts: list[str | None] = self.pool.attempts(2) if self.pool else [None]
         last_error = "no attempt made"
         response: httpx.Response | None = None
         used = "direct"
@@ -116,9 +119,16 @@ class FetchTool:
                     response = await client.get(url)
                 used = "direct" if proxy is None else mask_proxy(proxy)
                 if response.status_code < 500:
+                    if self.pool:
+                        healthy = response.status_code not in (401, 403, 407, 429)
+                        self.pool.report(proxy, healthy, response.status_code)
                     break
+                if self.pool:
+                    self.pool.report(proxy, False, response.status_code)
                 last_error = f"HTTP {response.status_code} via {used}"
             except Exception as exc:  # noqa: BLE001 - reported to the model
+                if self.pool:
+                    self.pool.report(proxy, False)
                 last_error = f"{type(exc).__name__}: {exc}"
                 response = None
 
@@ -167,9 +177,10 @@ async def build_bundle(
     model: str,
     session_id: str,
     proxies: list[str],
+    pool: ProxyPool | None = None,
 ) -> tuple[dict[str, str], float, list[dict[str, Any]]]:
     target_url = probe.get("final_url") or probe.get("url") or ""
-    tool = FetchTool(target_url=target_url, proxies=proxies)
+    tool = FetchTool(target_url=target_url, proxies=proxies, pool=pool)
     messages = [
         {"role": "system", "content": SCRAPER_SYSTEM + "\n" + TOOL_PROTOCOL},
         {"role": "user", "content": user_prompt(probe, options)},

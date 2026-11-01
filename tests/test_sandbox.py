@@ -71,6 +71,7 @@ def bundle() -> dict[str, str]:
             "network access. The proxy list is empty, the delay is zero, and the mapper uses "
             "the reference canonical schema end to end.\n"
         ),
+        "requirements.txt": "requests>=2.32\nbeautifulsoup4>=4.12\n",
     }
 
 

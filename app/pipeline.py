@@ -81,7 +81,15 @@ def _usage_cost(usage: dict[str, Any]) -> float:
 
 
 def _file_index(job_dir: Path) -> list[dict[str, Any]]:
-    names = ["scraper.py", "mapper.py", "runner.sh", "README.md", "probe.json", "agent_trace.json"]
+    names = [
+        "scraper.py",
+        "mapper.py",
+        "runner.sh",
+        "README.md",
+        "requirements.txt",
+        "probe.json",
+        "agent_trace.json",
+    ]
     index = []
     for name in names:
         path = job_dir / name
@@ -217,6 +225,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                 )
                 round_cost = _usage_cost(usage)
 
+            generator.ensure_requirements(bundle)
             cost += round_cost
             db.update_job(job_id, cost_usd=round(cost, 6))
             log(

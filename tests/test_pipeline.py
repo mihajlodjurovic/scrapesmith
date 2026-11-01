@@ -50,6 +50,7 @@ def test_pipeline_completes_and_previews(monkeypatch) -> None:
     assert updated["preview"]["mapped_count"] == 2
     assert updated["summary"]["source"] == "html"
     assert any(file["name"] == "scraper.py" for file in updated["files"])
+    assert (db.job_dir(job["id"]) / "requirements.txt").exists()
 
     messages = " ".join(event["message"] for event in db.events_since(job["id"]))
     assert "secret-key-for-test" not in messages

@@ -5,7 +5,7 @@
 [![CI](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml/badge.svg)](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-55%20passing-46d18c)
+![Tests](https://img.shields.io/badge/tests-58%20passing-46d18c)
 ![License](https://img.shields.io/badge/license-MIT-f5a524)
 
 ScrapeSmith is a local web app that turns a public page into a runnable Python
@@ -87,6 +87,7 @@ jobs/<id>/
   scraper.py        proxy pool, retries, API-first fetch, JSONL output, CLI
   mapper.py         raw → generic record schema, number/price parsing, stable ids
   runner.sh         scrape → map in one command
+  requirements.txt  requests / beautifulsoup4 (pymongo only for --mongo)
   README.md         what the site is, what was assumed, what breaks first
   probe.json        the discovery report used for the build
   agent_trace.json  every source the model verified

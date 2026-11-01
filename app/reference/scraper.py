@@ -177,9 +177,30 @@ def page_url(page: int) -> str:
     return f"{BASE_URL}?page={page}"
 
 
+def as_items(value, depth: int = 0) -> list[dict]:
+    """Normalise any API shape to a list of dicts, or an empty list.
+
+    Handles {"items": [...]}, {"data": {"items": [...]}}, {"results": [...]},
+    and rejects scalar lists instead of crashing later in run().
+    """
+    if depth > 3:
+        return []
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    if isinstance(value, dict):
+        for key in ("items", "data", "results", "listings", "products", "entries"):
+            if key in value:
+                nested = as_items(value[key], depth + 1)
+                if nested:
+                    return nested
+    return []
+
+
 def parse_items(payload: dict) -> list[dict]:
     """Map the site payload to a list of raw item dicts."""
-    return payload.get("items", [])
+    if isinstance(payload, dict):
+        return as_items(payload.get("items"))
+    return as_items(payload)
 
 
 def extract_json_ld_items(html: str, base_url: str) -> list[dict]:
@@ -235,16 +256,13 @@ def extract_payload(response: requests.Response) -> dict:
             data = response.json()
         except ValueError:
             data = {}
-        if isinstance(data, list):
-            return {"items": data}
-        if isinstance(data, dict):
-            return {"items": data.get("items") or data.get("data") or []}
-        return {"items": []}
+        return {"items": as_items(data)}
 
     match = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', response.text, re.S)
     if match:
         data = json.loads(match.group(1))
-        return {"items": data.get("props", {}).get("pageProps", {}).get("items", [])}
+        page_props = data.get("props", {}).get("pageProps", {})
+        return {"items": as_items(page_props.get("items"))}
 
     base_url = str(response.url)
     json_ld_items = extract_json_ld_items(response.text, base_url)
@@ -258,13 +276,16 @@ def fetch_page(session: requests.Session, pool: ProxyPool, page: int) -> list[di
     if response is None:
         return []
     try:
-        return parse_items(extract_payload(response))
+        items = parse_items(extract_payload(response))
     except Exception as exc:
         print(f"[warn] parse failed on page {page}: {exc}")
         return []
+    return [item for item in items if isinstance(item, dict)]
 
 
 def item_key(item: dict) -> str:
+    if not isinstance(item, dict):
+        return str(item)
     for field in ("id", "url", "link", "slug"):
         if item.get(field):
             return str(item[field])

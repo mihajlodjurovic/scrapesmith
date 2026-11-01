@@ -30,6 +30,7 @@ READABLE_FILES = {
     "mapper.py",
     "runner.sh",
     "README.md",
+    "requirements.txt",
     "NOTES.md",
     "probe.json",
     "agent_trace.json",

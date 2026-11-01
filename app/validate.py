@@ -154,6 +154,23 @@ def validate_bundle(files: dict[str, str]) -> list[str]:
             if missing:
                 errors.append(f"mapper.py: CANONICAL_KEYS is missing {', '.join(missing)}")
 
+    requirements = files.get("requirements.txt")
+    if not requirements:
+        errors.append(
+            "requirements.txt: missing — ship the dependencies the scraper imports"
+        )
+    else:
+        declared = requirements.lower()
+        scraper_source = files.get("scraper.py", "")
+        if ("import requests" in scraper_source or "from requests" in scraper_source) and (
+            "requests" not in declared
+        ):
+            errors.append("requirements.txt: missing 'requests'")
+        if ("BeautifulSoup" in scraper_source or "bs4" in scraper_source) and (
+            "beautifulsoup4" not in declared and "bs4" not in declared
+        ):
+            errors.append("requirements.txt: missing 'beautifulsoup4'")
+
     runner = files.get("runner.sh", "")
     if runner:
         if "scraper.py" not in runner or "mapper.py" not in runner:

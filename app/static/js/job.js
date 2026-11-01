@@ -22,7 +22,7 @@ function init(root) {
   const download = document.getElementById('download');
 
   const READABLE = new Set([
-    'scraper.py', 'mapper.py', 'runner.sh', 'README.md', 'NOTES.md',
+    'scraper.py', 'mapper.py', 'runner.sh', 'README.md', 'requirements.txt', 'NOTES.md',
     'probe.json', 'agent_trace.json', 'raw.jsonl', 'mapped.jsonl',
   ]);
   const STATUS_LABEL = {

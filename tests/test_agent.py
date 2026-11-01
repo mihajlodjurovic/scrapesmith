@@ -88,6 +88,14 @@ def test_reference_html_fallback_extracts_cards() -> None:
     assert len(items) == 2
 
 
+def test_reference_normalises_nested_api_shapes() -> None:
+    assert reference.as_items({"data": {"items": [{"id": 1}]}}) == [{"id": 1}]
+    assert reference.as_items({"results": [{"id": 2}]}) == [{"id": 2}]
+    assert reference.as_items({"items": ["a", 1, {"id": 3}]}) == [{"id": 3}]
+    assert reference.as_items(["a", "b"]) == []
+    assert reference.as_items({"data": "not a list"}) == []
+
+
 def test_agent_fetches_then_returns_bundle(monkeypatch) -> None:
     replies = [
         ("TOOL: fetch https://example.com/list.rss", {"cost": 0.001}),

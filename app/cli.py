@@ -21,12 +21,13 @@ BUNDLE_FILES = (
     "mapper.py",
     "runner.sh",
     "README.md",
+    "requirements.txt",
     "probe.json",
     "agent_trace.json",
     "raw.jsonl",
     "mapped.jsonl",
 )
-REQUIRED_FILES = ("scraper.py", "mapper.py", "runner.sh", "README.md")
+REQUIRED_FILES = ("scraper.py", "mapper.py", "runner.sh", "README.md", "requirements.txt")
 
 
 def validate_bundle_dir(path: str | Path) -> list[str]:
@@ -51,16 +52,18 @@ def scaffold_bundle(target: str | Path) -> list[str]:
     directory.mkdir(parents=True, exist_ok=True)
     reference = Path(__file__).resolve().parent / "reference"
 
-    for name in ("scraper.py", "mapper.py", "runner.sh"):
+    for name in ("scraper.py", "mapper.py", "runner.sh", "requirements.txt"):
         shutil.copyfile(reference / name, directory / name)
 
     readme = directory / "README.md"
     if not readme.exists():
         readme.write_text(
             "# <site> scraper\n\n"
-            "Describe the data source, the fields you mapped, and what is most likely "
-            "to break when the site changes. Keep the proxy/retry plumbing from the "
-            "reference scraper and document every assumption in NOTES.\n",
+            "Install dependencies with `pip install -r requirements.txt`, then run "
+            "`bash runner.sh`. Describe the data source, the fields you mapped, and "
+            "what is most likely to break when the site changes. Keep the "
+            "proxy/retry plumbing from the reference scraper and document every "
+            "assumption in NOTES.\n",
             encoding="utf-8",
         )
 

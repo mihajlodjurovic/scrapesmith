@@ -3,6 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+python3 -c "import requests, bs4" 2>/dev/null || {
+  echo "Missing dependencies. Run: pip install -r requirements.txt" >&2
+  exit 1
+}
+
 MAX_PAGES="${MAX_PAGES:-5}"
 
 echo "[1/2] scraping (max ${MAX_PAGES} pages)"

@@ -22,6 +22,7 @@ def good_bundle() -> dict[str, str]:
         "mapper.py": (REFERENCE / "mapper.py").read_text(encoding="utf-8"),
         "runner.sh": (REFERENCE / "runner.sh").read_text(encoding="utf-8"),
         "README.md": README,
+        "requirements.txt": (REFERENCE / "requirements.txt").read_text(encoding="utf-8"),
     }
 
 
@@ -66,3 +67,17 @@ def test_syntax_error_is_reported() -> None:
     bundle["mapper.py"] = "def map_listing(:\n    pass\n"
     errors = validate_bundle(bundle)
     assert any("syntax error" in error for error in errors)
+
+
+def test_missing_requirements_is_rejected() -> None:
+    bundle = good_bundle()
+    del bundle["requirements.txt"]
+    errors = validate_bundle(bundle)
+    assert any("requirements.txt" in error for error in errors)
+
+
+def test_requirements_must_list_the_imports() -> None:
+    bundle = good_bundle()
+    bundle["requirements.txt"] = "beautifulsoup4>=4.12\n"
+    errors = validate_bundle(bundle)
+    assert any("requirements.txt" in error and "requests" in error for error in errors)

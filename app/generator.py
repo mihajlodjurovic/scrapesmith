@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from . import llm
@@ -14,6 +15,7 @@ FENCE_END = re.compile(r"\n```\s*$")
 
 REQUIRED_FILES = ("scraper.py", "mapper.py", "runner.sh", "README.md")
 FILE_ORDER = REQUIRED_FILES + ("NOTES",)
+REFERENCE_DIR = Path(__file__).resolve().parent / "reference"
 
 
 class GenerationError(RuntimeError):
@@ -41,6 +43,14 @@ def parse_files(text: str) -> dict[str, str]:
     if missing:
         raise GenerationError(f"Model reply is missing files: {', '.join(missing)}")
     return files
+
+
+def ensure_requirements(files: dict[str, str]) -> None:
+    """Every bundle ships its dependency list, even if the model omitted it."""
+    if "requirements.txt" not in files:
+        files["requirements.txt"] = (REFERENCE_DIR / "requirements.txt").read_text(
+            encoding="utf-8"
+        )
 
 
 async def generate(

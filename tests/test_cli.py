@@ -11,7 +11,7 @@ from app import cli, db
 def test_scaffold_then_validate_clean(tmp_path) -> None:
     directory = tmp_path / "bundle"
     files = cli.scaffold_bundle(directory)
-    assert {"scraper.py", "mapper.py", "runner.sh", "README.md", "proxies.json"} <= set(files)
+    assert {"scraper.py", "mapper.py", "runner.sh", "README.md", "requirements.txt", "proxies.json"} <= set(files)
     assert cli.validate_bundle_dir(directory) == []
 
 

@@ -109,7 +109,7 @@ If the sandbox produced zero records, inspect in this order:
 | `app/reference/` | Golden scraper, mapper, runner, schema — the contract |
 | `app/cli.py` | Functions behind `scripts/build.py`, `validate_bundle.py`, `scaffold_bundle.py` |
 | `docs/` | Architecture, decisions, evaluation, workflow, contract |
-| `tests/` | 55 offline tests; run `pytest -q` before claiming success |
+| `tests/` | 58 offline tests; run `pytest -q` before claiming success |
 
 ## Definition of done
 

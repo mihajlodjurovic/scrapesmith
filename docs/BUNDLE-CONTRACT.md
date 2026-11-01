@@ -10,6 +10,7 @@ Every generated or hand-written bundle must satisfy this contract. It is what
 | `scraper.py` | yes | Fetch, parse, write raw JSONL |
 | `mapper.py` | yes | Raw → canonical record schema |
 | `runner.sh` | yes | Run both steps |
+| `requirements.txt` | yes | `requests`, `beautifulsoup4`, optional `pymongo` |
 | `README.md` | yes | Source, assumptions, breakage notes |
 | `probe.json` | generated | Discovery report (optional for hand-written bundles) |
 | `agent_trace.json` | generated | Verified sources (optional) |
@@ -76,9 +77,22 @@ Rules:
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+
+python3 -c "import requests, bs4" 2>/dev/null || {
+  echo "Missing dependencies. Run: pip install -r requirements.txt" >&2
+  exit 1
+}
+
 python3 scraper.py --max-pages "${MAX_PAGES:-5}" --out raw.jsonl --proxies proxies.json
 python3 mapper.py --in raw.jsonl --out mapped.jsonl
 ```
+
+## Dependencies
+
+`requirements.txt` must list what `scraper.py` imports: `requests` and
+`beautifulsoup4` for the reference bundle, `pymongo` only when `--mongo` is used.
+The validator rejects a bundle that imports `requests`/`bs4` without declaring
+them, and the app injects the reference list if the model omits the file.
 
 ## Sandbox proof
 

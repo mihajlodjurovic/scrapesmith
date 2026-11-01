@@ -14,7 +14,13 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from .. import db
-from ..config import ENV_API_KEY, PROVIDER_PRESETS
+from ..config import (
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL,
+    DEFAULT_PROVIDER,
+    ENV_API_KEY,
+    PROVIDER_PRESETS,
+)
 from ..pipeline import run_job
 
 router = APIRouter(prefix="/api", tags=["jobs"])
@@ -97,9 +103,9 @@ def providers() -> dict[str, Any]:
         "presets": PROVIDER_PRESETS,
         "has_env_key": bool(ENV_API_KEY),
         "defaults": {
-            "provider": "opencode",
-            "base_url": PROVIDER_PRESETS["opencode"]["base_url"],
-            "model": "minimax-m3",
+            "provider": DEFAULT_PROVIDER,
+            "base_url": DEFAULT_BASE_URL,
+            "model": DEFAULT_MODEL,
         },
     }
 

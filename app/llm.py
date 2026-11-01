@@ -35,6 +35,7 @@ async def chat(
     messages: list[dict[str, str]],
     max_tokens: int = LLM_MAX_TOKENS,
     temperature: float = 0.2,
+    session_id: str = "",
 ) -> tuple[str, dict]:
     """Return (assistant_text, usage_info). Raises LLMError with a readable message."""
     if not api_key:
@@ -48,19 +49,18 @@ async def chat(
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "User-Agent": "ScrapeSmith/0.1",
+    }
+    if session_id:
+        headers["x-opencode-session"] = session_id
     text_parts: list[str] = []
     usage: dict = {}
     try:
         async with httpx.AsyncClient(timeout=LLM_TIMEOUT_SECONDS) as client:
-            async with client.stream(
-                "POST",
-                url,
-                json=payload,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-            ) as response:
+            async with client.stream("POST", url, json=payload, headers=headers) as response:
                 if response.status_code >= 400:
                     body = (await response.aread()).decode("utf-8", "replace")
                     raise LLMError(_explain(response.status_code, body))

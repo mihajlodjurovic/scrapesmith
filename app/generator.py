@@ -50,13 +50,18 @@ async def generate(
     base_url: str,
     api_key: str,
     model: str,
+    session_id: str = "",
 ) -> tuple[dict[str, str], dict[str, Any]]:
     messages = [
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": user_prompt(probe, options)},
     ]
     text, usage = await llm.chat(
-        base_url=base_url, api_key=api_key, model=model, messages=messages
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        messages=messages,
+        session_id=session_id,
     )
     return parse_files(text), usage
 
@@ -68,6 +73,7 @@ async def repair(
     base_url: str,
     api_key: str,
     model: str,
+    session_id: str = "",
 ) -> tuple[dict[str, str], dict[str, Any]]:
     rendered = "\n\n".join(
         f"### FILE: {name}\n```{_language(name)}\n{files[name]}```"
@@ -89,7 +95,11 @@ async def repair(
         },
     ]
     text, usage = await llm.chat(
-        base_url=base_url, api_key=api_key, model=model, messages=messages
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        messages=messages,
+        session_id=session_id,
     )
     return parse_files(text), usage
 

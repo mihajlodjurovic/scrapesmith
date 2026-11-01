@@ -17,12 +17,12 @@ DB_PATH = DATA_DIR / "scrapesmith.db"
 APP_NAME = "ScrapeSmith"
 APP_VERSION = "0.1.0"
 
-# LLM defaults — OpenCode Console inference is OpenAI-compatible.
-DEFAULT_PROVIDER = os.getenv("SCRAPESMITH_PROVIDER", "opencode")
+# LLM defaults — OpenCode Go uses a dedicated endpoint so usage counts toward Go.
+DEFAULT_PROVIDER = os.getenv("SCRAPESMITH_PROVIDER", "opencode-go")
 DEFAULT_BASE_URL = os.getenv(
-    "SCRAPESMITH_BASE_URL", "https://opencode.ai/inference/openai/v1"
+    "SCRAPESMITH_BASE_URL", "https://opencode.ai/inference/go/openai/v1"
 ).rstrip("/")
-DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "minimax-m3")
+DEFAULT_MODEL = os.getenv("SCRAPESMITH_MODEL", "glm-5.3")
 ENV_API_KEY = os.getenv("OPENCODE_API_KEY", "").strip()
 
 LLM_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_LLM_TIMEOUT", "300"))
@@ -46,10 +46,21 @@ USER_AGENT = os.getenv(
 )
 
 PROVIDER_PRESETS = {
+    "opencode-go": {
+        "label": "OpenCode Go (subscription)",
+        "base_url": "https://opencode.ai/inference/go/openai/v1",
+        "models": [
+            "glm-5.3",
+            "glm-5.3-flash",
+            "minimax-m3.1-flash",
+            "deepseek-v4.1-flash",
+            "kimi-k3",
+        ],
+    },
     "opencode": {
-        "label": "OpenCode (Console inference)",
+        "label": "OpenCode (pay-as-you-go)",
         "base_url": "https://opencode.ai/inference/openai/v1",
-        "models": ["minimax-m3", "kimi-k3", "glm-5.3", "mistral-large-4", "kimi-k2.6"],
+        "models": ["minimax-m3", "kimi-k3", "mistral-large-4", "glm-5.3"],
     },
     "openai": {
         "label": "OpenAI",

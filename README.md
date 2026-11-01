@@ -84,16 +84,21 @@ Open <http://127.0.0.1:8000>, paste a URL, press **Generate scraper**.
 ### Using OpenCode inference (recommended)
 
 [OpenCode Console](https://opencode.ai/console) exposes an OpenAI-compatible
-inference API that works from external clients:
+inference API that works from external clients. Create a key under
+**Account → Personal API keys**.
+
+If you have the **Go** subscription, use the Go endpoint so usage counts toward
+your plan:
 
 ```bash
 OPENCODE_API_KEY=oc_sk_...
-SCRAPESMITH_BASE_URL=https://opencode.ai/inference/openai/v1
-SCRAPESMITH_MODEL=minimax-m3
+SCRAPESMITH_BASE_URL=https://opencode.ai/inference/go/openai/v1
+SCRAPESMITH_MODEL=glm-5.3
 ```
 
-Paid models or a Go subscription are required for external clients; free-tier
-models only work inside OpenCode itself and return `403` here.
+Pay-as-you-go Console keys use `https://opencode.ai/inference/openai/v1`.
+Free-tier models only work inside OpenCode itself and return `403` from external
+clients — use a paid model or Go.
 
 Any OpenAI-compatible endpoint works: OpenAI, OpenRouter, or a self-hosted
 gateway. The key can also be pasted in the form per job.
@@ -110,8 +115,8 @@ docker run --rm -p 8000:8000 -e OPENCODE_API_KEY=oc_sk_... scrapesmith
 | Variable | Default | Purpose |
 |---|---|---|
 | `OPENCODE_API_KEY` | — | Fallback key if the form field is empty |
-| `SCRAPESMITH_BASE_URL` | OpenCode inference | OpenAI-compatible base URL |
-| `SCRAPESMITH_MODEL` | `minimax-m3` | Default model |
+| `SCRAPESMITH_BASE_URL` | Go inference endpoint | OpenAI-compatible base URL |
+| `SCRAPESMITH_MODEL` | `glm-5.3` | Default model |
 | `SCRAPESMITH_MAX_REPAIRS` | `2` | Extra generate attempts after failures |
 | `SCRAPESMITH_FETCH_TIMEOUT` | `25` | Discovery request timeout (s) |
 | `SCRAPESMITH_SANDBOX_TIMEOUT` | `180` | Per subprocess limit (s) |

@@ -144,6 +144,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     base_url=job["base_url"],
                     api_key=secret,
                     model=job["model"],
+                    session_id=job_id,
                 )
             else:
                 log(f"Repair round {round_number - 1}/{MAX_REPAIR_ATTEMPTS}", "step")
@@ -174,6 +175,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                         base_url=job["base_url"],
                         api_key=secret,
                         model=job["model"],
+                        session_id=job_id,
                     )
                     continue
                 raise generator.GenerationError(
@@ -234,6 +236,7 @@ async def run_job(job_id: str, api_key: str | None) -> None:
                     base_url=job["base_url"],
                     api_key=secret,
                     model=job["model"],
+                    session_id=job_id,
                 )
                 continue
             raise generator.GenerationError(

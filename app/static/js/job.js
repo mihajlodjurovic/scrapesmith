@@ -65,8 +65,7 @@ function init(root) {
       }
       if (index === -1) return;
       if (i < index) item.classList.add('complete');
-      else if (i === index) item.classList.add('active');
-      else if (status === 'done') item.classList.add('complete');
+      else if (i === index) item.classList.add(status === 'done' ? 'complete' : 'active');
     });
   }
 
@@ -87,6 +86,9 @@ function init(root) {
     if (job.summary && job.summary.seconds) bits.push(`${job.summary.seconds}s`);
     if (job.cost_usd) bits.push(`$${job.cost_usd.toFixed(4)}`);
     if (job.attempts > 1) bits.push(`${job.attempts} attempts`);
+    if (job.summary && job.summary.mode) {
+      bits.push(job.summary.mode === 'unrestricted' ? 'not polite' : 'polite');
+    }
     jobMeta.textContent = bits.join(' · ');
     setStatus(job.status);
 

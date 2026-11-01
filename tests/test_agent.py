@@ -8,6 +8,7 @@ import pytest
 
 from app import agent
 from app.agent import FetchTool, build_bundle, parse_tool_call, registrable_domain
+from app.reference import scraper as reference
 
 BUNDLE_TEXT = """### FILE: scraper.py
 ```python
@@ -48,6 +49,41 @@ def test_registrable_domain_and_site_guard() -> None:
     assert tool.allowed("https://old.reddit.com/r/AskSerbia/comments/abc/")
     assert not tool.allowed("https://evil.example.com/steal")
     assert not tool.allowed("file:///etc/passwd")
+
+
+def test_registrable_domain_respects_public_suffixes() -> None:
+    assert registrable_domain("shop.foo.co.uk") == "foo.co.uk"
+    assert registrable_domain("a.b.com.br") == "b.com.br"
+    assert registrable_domain("evil.co.rs") == "evil.co.rs"
+    assert registrable_domain("evil.co.uk") != registrable_domain("target.co.uk")
+
+
+def test_tool_call_accepts_json_as_well_as_text() -> None:
+    assert (
+        parse_tool_call('{"tool": "fetch", "url": "https://example.com/a.json"}')
+        == "https://example.com/a.json"
+    )
+    fenced = '```json\n{"action": "fetch", "url": "https://example.com/a.rss"}\n```'
+    assert parse_tool_call(fenced) == "https://example.com/a.rss"
+
+
+def test_reference_retry_delay_honours_retry_after() -> None:
+    class Response:
+        headers = {"retry-after": "7"}
+
+    assert reference.retry_delay(Response(), attempt=1) == 7.0
+    assert 1.0 <= reference.retry_delay(None, attempt=3) <= 4.3
+
+
+def test_reference_html_fallback_extracts_cards() -> None:
+    html = (
+        '<article><a href="/cars/1">Volkswagen Golf 2.0 TDI</a></article>'
+        '<article><a href="/cars/2">Audi A3 35 TFSI</a></article>'
+    )
+    items = reference.extract_cards(html, "https://example.com/list")
+    assert items[0]["url"] == "https://example.com/cars/1"
+    assert "Volkswagen" in items[0]["title"]
+    assert len(items) == 2
 
 
 def test_agent_fetches_then_returns_bundle(monkeypatch) -> None:

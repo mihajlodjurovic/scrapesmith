@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
+import tldextract
 
 from . import llm
 from .config import FETCH_TIMEOUT_SECONDS, LLM_MAX_TOKENS
@@ -24,6 +25,10 @@ from .proxies import ProxyPool, mask_proxy
 
 TOOL_LIMIT = 6
 SAME_SITE_MIN_DELAY = 0.4
+
+# Bundled public suffix snapshot: no network call, correct for co.uk / com.br /
+# co.rs and the rest. Never derive the site from "last two labels".
+_SUFFIXES = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -73,10 +78,16 @@ class AgentError(RuntimeError):
 
 
 def registrable_domain(host: str) -> str:
-    parts = [part for part in host.lower().strip(".").split(".") if part]
-    if len(parts) <= 2:
-        return ".".join(parts)
-    return ".".join(parts[-2:])
+    """Registrable domain using the public suffix list, not "last two labels"."""
+    host = (host or "").lower().strip(".")
+    if not host:
+        return ""
+    extracted = _SUFFIXES(host)
+    return (
+        getattr(extracted, "top_domain_under_public_suffix", None)
+        or extracted.registered_domain
+        or host
+    )
 
 
 @dataclass
@@ -164,13 +175,50 @@ class FetchTool:
         return observation
 
 
+def _tool_url(payload: dict) -> str | None:
+    action = str(payload.get("tool") or payload.get("action") or "").lower()
+    url = payload.get("url") or payload.get("target")
+    if action == "fetch" and isinstance(url, str) and url.startswith(("http://", "https://")):
+        return url
+    return None
+
+
 def parse_tool_call(text: str) -> str | None:
+    """Accept both `TOOL: fetch <url>` and a JSON object with tool/url."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        stripped = "\n".join(lines).strip()
+
+    if stripped.startswith("{"):
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            url = _tool_url(payload)
+            if url:
+                return url
+
     for line in text.splitlines():
         line = line.strip().strip("`")
         if line.upper().startswith("TOOL:"):
             rest = line.split(":", 1)[1].strip()
             if rest.lower().startswith("fetch"):
                 return rest[5:].strip()
+        if line.startswith("{") and line.endswith("}"):
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                url = _tool_url(payload)
+                if url:
+                    return url
     return None
 
 

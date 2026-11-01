@@ -100,7 +100,8 @@ whole page.
 
 Constraints:
 
-- same registrable domain only (subdomains allowed);
+- same registrable domain only (public suffix list, so `co.uk` and `com.br` are
+  handled correctly);
 - six calls maximum, small delay, no auth, no private data;
 - a 403 on one route does not end the search;
 - the final message must contain all four files.

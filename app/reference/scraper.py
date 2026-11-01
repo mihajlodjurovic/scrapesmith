@@ -16,11 +16,16 @@ import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urljoin
 
 import requests
+from bs4 import BeautifulSoup
 
 BASE_URL = "https://example.com/search"
 SITE = "example.com"
+
+# ADAPT: the selector for the repeated item block on the target site.
+CARD_SELECTOR = "article, li.product, div.card"
 
 DELAY = float(os.getenv("SCRAPESMITH_DELAY", "0.2"))
 TIMEOUT = float(os.getenv("SCRAPESMITH_TIMEOUT", "20"))
@@ -123,6 +128,18 @@ def proxy_dict(proxy: str | None) -> dict[str, str] | None:
 
 
 # ─────────────────────────── Fetching ───────────────────────────
+def retry_delay(response: requests.Response | None, attempt: int) -> float:
+    """Honour Retry-After, otherwise exponential backoff with jitter."""
+    if response is not None:
+        header = response.headers.get("retry-after", "")
+        if header:
+            try:
+                return min(float(header), 30.0)
+            except ValueError:
+                pass
+    return min(2 ** (attempt - 1), 20.0) + random.uniform(0, 0.3)
+
+
 def request(session: requests.Session, pool: ProxyPool, url: str) -> requests.Response | None:
     for attempt in range(1, RETRIES + 1):
         proxy = pool.pick()
@@ -137,17 +154,17 @@ def request(session: requests.Session, pool: ProxyPool, url: str) -> requests.Re
         except requests.RequestException as exc:
             pool.report(proxy, False)
             print(f"[warn] attempt {attempt}/{RETRIES} {url}: {exc}")
-            time.sleep(0.5 * attempt)
+            time.sleep(retry_delay(None, attempt))
             continue
 
-        if response.status_code in (401, 403, 407, 429):
+        if response.status_code in (401, 403, 407, 429, 503):
             pool.report(proxy, False, response.status_code)
             print(f"[warn] attempt {attempt}/{RETRIES} status {response.status_code}")
-            time.sleep(1.0 * attempt)
+            time.sleep(retry_delay(response, attempt))
             continue
         if response.status_code >= 500:
             pool.report(proxy, False, response.status_code)
-            time.sleep(1.0 * attempt)
+            time.sleep(retry_delay(response, attempt))
             continue
 
         pool.report(proxy, True)
@@ -165,17 +182,75 @@ def parse_items(payload: dict) -> list[dict]:
     return payload.get("items", [])
 
 
+def extract_json_ld_items(html: str, base_url: str) -> list[dict]:
+    """Read schema.org ItemList entries before falling back to card selectors."""
+    soup = BeautifulSoup(html, "html.parser")
+    items: list[dict] = []
+    for tag in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        try:
+            data = json.loads(tag.string or tag.get_text())
+        except (TypeError, json.JSONDecodeError):
+            continue
+        blocks = data if isinstance(data, list) else [data]
+        for block in blocks:
+            if not isinstance(block, dict) or block.get("@type") != "ItemList":
+                continue
+            for element in block.get("itemListElement") or []:
+                item = element.get("item") if isinstance(element, dict) else None
+                if not isinstance(item, dict):
+                    continue
+                items.append(
+                    {
+                        "title": item.get("name"),
+                        "url": urljoin(base_url, item.get("url") or ""),
+                        "description": item.get("description"),
+                    }
+                )
+    return items
+
+
+def extract_cards(html: str, base_url: str) -> list[dict]:
+    """Last-resort HTML fallback. ADAPT CARD_SELECTOR and the field mapping."""
+    soup = BeautifulSoup(html, "html.parser")
+    items: list[dict] = []
+    for card in soup.select(CARD_SELECTOR)[:100]:
+        link = card.find("a", href=True)
+        if not link:
+            continue
+        title = " ".join(card.get_text(" ", strip=True).split())[:300]
+        items.append(
+            {
+                "title": title,
+                "url": urljoin(base_url, link["href"]),
+            }
+        )
+    return items
+
+
 def extract_payload(response: requests.Response) -> dict:
-    """Prefer JSON; fall back to embedded state or HTML parsing."""
+    """Prefer JSON; fall back to embedded state, JSON-LD, then HTML cards."""
     content_type = response.headers.get("content-type", "")
     if "json" in content_type:
-        return {"items": response.json().get("items", [])}
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+        if isinstance(data, list):
+            return {"items": data}
+        if isinstance(data, dict):
+            return {"items": data.get("items") or data.get("data") or []}
+        return {"items": []}
 
     match = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', response.text, re.S)
     if match:
         data = json.loads(match.group(1))
         return {"items": data.get("props", {}).get("pageProps", {}).get("items", [])}
-    return {"items": []}
+
+    base_url = str(response.url)
+    json_ld_items = extract_json_ld_items(response.text, base_url)
+    if json_ld_items:
+        return {"items": json_ld_items}
+    return {"items": extract_cards(response.text, base_url)}
 
 
 def fetch_page(session: requests.Session, pool: ProxyPool, page: int) -> list[dict]:
@@ -197,6 +272,9 @@ def item_key(item: dict) -> str:
 
 
 def save_mongo(uri: str, database: str, collection: str, items: list[dict]) -> None:
+    if not items:
+        print("[mongo] nothing to write")
+        return
     from pymongo import MongoClient
 
     client = MongoClient(uri)
@@ -209,6 +287,7 @@ def run(max_pages: int, out_path: str, proxies_file: str, mongo: str | None) -> 
     pool = ProxyPool(load_proxies(proxies_file))
     seen: set[str] = set()
     written = 0
+    written_items: list[dict] = []
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -239,11 +318,12 @@ def run(max_pages: int, out_path: str, proxies_file: str, mongo: str | None) -> 
             for item in fresh:
                 handle.write(json.dumps(item, ensure_ascii=False) + "\n")
             written += len(fresh)
+            written_items.extend(fresh)
             time.sleep(DELAY * random.uniform(0.8, 1.2))
 
     print(f"[done] wrote {written} raw items to {out}")
     if mongo:
-        save_mongo(mongo, "scraped", SITE.replace(".", "_"), [])
+        save_mongo(mongo, "scraped", SITE.replace(".", "_"), written_items)
     return written
 
 

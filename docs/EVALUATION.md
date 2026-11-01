@@ -1,7 +1,7 @@
-﻿# Evaluation
+# Evaluation
 
 A small, reproducible field test of the pipeline. The goal is not a benchmark
-record â€” it is evidence that the gates (verified source, contract, sandbox)
+record — it is evidence that the gates (verified source, contract, sandbox)
 produce bundles that run on the first attempt across different page shapes.
 
 ## Method
@@ -28,7 +28,7 @@ HTML, a JavaScript shell with a feed, a real JSON API, and a site whose
 | `quotes.toscrape.com` | Static HTML, repeated blocks | polite | done | 10 / 10 | $0.0066 | HTML |
 | Reddit thread (`r/AskSerbia`) | JS shell, 403 on JSON | unrestricted | done | 42 / 42 | $0.0070 | Atom feed |
 | `jsonplaceholder.typicode.com/posts` | Plain JSON array | polite | done | 100 / 100 | $0.0078 | JSON |
-| `autoscout24.com/lst` | SPA + `__NEXT_DATA__` | polite | stopped by policy | 0 | $0.0000 | â€” |
+| `autoscout24.com/lst` | SPA + `__NEXT_DATA__` | polite | stopped by policy | 0 | $0.0000 | — |
 | `autoscout24.com/lst` | same page, explicit override | unrestricted | done | 20 / 20 | $0.0103 | embedded JSON |
 | YouTube watch page | detail page, embedded JSON | polite | done | 1 / 1 | $0.0176 | embedded state |
 
@@ -51,7 +51,7 @@ Total model spend for the seven builds: **under $0.06**.
   JSON array directly and skipped HTML parsing entirely.
 - **autoscout24**: discovery succeeded (20 listing cards, embedded
   `__NEXT_DATA__`, 2 API candidates) but `robots.txt` disallows the path. In
-  polite mode the pipeline stopped before any model call â€” the intended
+  polite mode the pipeline stopped before any model call — the intended
   behaviour, and the reason cost is $0.0000. The same URL, run explicitly in
   `unrestricted` mode, produced 20/20 records for $0.0103 from the embedded
   JSON, which shows the policy gate and the override are independent.
@@ -70,7 +70,7 @@ For the successful bundles:
 | Static contract violations | 0 |
 | Bundle completeness on first reply | 6/6 builds |
 | Sandbox attempts used | 1 per build |
-| `pytest` suite | 51 tests, no network |
+| `pytest` suite | 55 tests, no network |
 | Generated code includes `ProxyPool`, `DELAY`, retries | yes |
 | Hardcoded credentials | none |
 | Fill rate, `title` / `url` / `id` | 100% |

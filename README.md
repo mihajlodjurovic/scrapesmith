@@ -1,11 +1,11 @@
-﻿# ScrapeSmith
+# ScrapeSmith
 
-**One URL in. A scraper and a mapper out â€” verified before you download it.**
+**One URL in. A scraper and a mapper out — verified before you download it.**
 
 [![CI](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml/badge.svg)](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-51%20passing-46d18c)
+![Tests](https://img.shields.io/badge/tests-55%20passing-46d18c)
 ![License](https://img.shields.io/badge/license-MIT-f5a524)
 
 ScrapeSmith is a local web app that turns a public page into a runnable Python
@@ -52,20 +52,20 @@ dangerous, or why `__NEXT_DATA__` matters. They paste a URL and get software.
 ## The five gates
 
 ```text
-URL â”€â”€â–º 1. PROBE      robots, headers, API candidates, embedded state,
-          â”‚           repeated DOM blocks, trimmed skeleton
-          â–¼
-       2. VERIFY     the agent fetches candidate sources (.json, .rss,
-          â”‚           /feed, API paths) before writing code
-          â–¼
-       3. GENERATE   reference scraper + mapper + schema + verified source
-          â”‚           â†’ four files
-          â–¼
-       4. VALIDATE   AST, forbidden imports, secret scan, contract,
-          â”‚           schema coverage â€” no execution yet
-          â–¼
-       5. PROVE      subprocess run, one page, mapped preview,
-                      per-field fill rates, repair loop on failure
+URL --> 1. PROBE      robots, headers, API candidates, embedded state,
+         |            repeated DOM blocks, trimmed skeleton
+         v
+      2. VERIFY      the agent fetches candidate sources (.json, .rss,
+         |            /feed, API paths) before writing code
+         v
+      3. GENERATE    reference scraper + mapper + schema + verified source
+         |            -> four files
+         v
+      4. VALIDATE    AST, forbidden imports, secret scan, contract,
+         |            schema coverage - no execution yet
+         v
+      5. PROVE       subprocess run, one page, mapped preview,
+                     per-field fill rates, repair loop on failure
 ```
 
 Each gate exists because of a failure mode seen in real scraping work. The
@@ -85,8 +85,8 @@ actually returned `2xx`. The whole trace is saved as `agent_trace.json`.
 ```text
 jobs/<id>/
   scraper.py        proxy pool, retries, API-first fetch, JSONL output, CLI
-  mapper.py         raw â†’ generic record schema, number/price parsing, stable ids
-  runner.sh         scrape â†’ map in one command
+  mapper.py         raw → generic record schema, number/price parsing, stable ids
+  runner.sh         scrape → map in one command
   README.md         what the site is, what was assumed, what breaks first
   probe.json        the discovery report used for the build
   agent_trace.json  every source the model verified
@@ -130,7 +130,7 @@ The job summary also records `probe_seconds`, `generate_seconds` and
 | `description` | Cleaned summary or body |
 | `location` | City/region text when present |
 | `images` | Up to 20 absolute image URLs |
-| `attributes` | Domain fields (author, rating, mileage, tags, â€¦) |
+| `attributes` | Domain fields (author, rating, mileage, tags, …) |
 | `source` | Hostname |
 | `scraped_at` | ISO 8601 UTC timestamp |
 
@@ -197,7 +197,7 @@ python scripts/smoke_llm.py
 
 `result.json` next to the bundle reports status, record counts, fill rates, the
 verified source, cost and the exact error if one occurred. Agent guides:
-[AGENTS.md](AGENTS.md) Â· [workflow](docs/AGENT-WORKFLOW.md) Â·
+[AGENTS.md](AGENTS.md) · [workflow](docs/AGENT-WORKFLOW.md) ·
 [bundle contract](docs/BUNDLE-CONTRACT.md).
 
 ## Politeness modes
@@ -205,27 +205,28 @@ verified source, cost and the exact error if one occurred. Agent guides:
 | Mode | Behaviour |
 |---|---|
 | `polite` (default) | Fetches and enforces `robots.txt`. A disallowed path stops the build before any model tokens are spent. |
-| `unrestricted` (â€œnot politeâ€) | Ignores `robots.txt`, logs a warning, records the choice on the job. Use only for sites you own or have written permission to scrape. |
+| `unrestricted` ("not polite") | Ignores `robots.txt`, logs a warning, records the choice on the job. Use only for sites you own or have written permission to scrape. |
 
 Both modes refuse logins, CAPTCHA solving and private data. The tool is a
 scraper generator, not a ban-evasion tool.
 
 ## Evaluation snapshot
 
-Six targets, one model, no manual fixes:
+Six targets, one model, mixed modes, no manual fixes:
 
-| Target | Shape | Outcome | Records | Cost |
-|---|---|---|---:|---:|
-| `books.toscrape.com` | static HTML | done | 20 / 20 | $0.0075 |
-| `quotes.toscrape.com` | repeated blocks | done | 10 / 10 | $0.0066 |
-| Reddit thread | JS shell, JSON 403 | done via Atom | 42 / 42 | $0.0070 |
-| `jsonplaceholder.typicode.com/posts` | plain JSON | done | 100 / 100 | $0.0078 |
-| `autoscout24.com/lst` | SPA, robots disallow | policy stop (expected) | 0 | $0.0000 |
-| YouTube watch page | detail page, embedded JSON | done | 1 / 1 | $0.0176 |
+| Target | Shape | Mode | Outcome | Records | Cost |
+|---|---|---|---|---:|---:|
+| `books.toscrape.com` | static HTML | polite | done | 20 / 20 | $0.0075 |
+| `quotes.toscrape.com` | repeated blocks | polite | done | 10 / 10 | $0.0066 |
+| Reddit thread | JS shell, JSON 403 | unrestricted | done via Atom | 42 / 42 | $0.0070 |
+| `jsonplaceholder.typicode.com/posts` | plain JSON | polite | done | 100 / 100 | $0.0078 |
+| `autoscout24.com/lst` | SPA, robots disallow | polite | policy stop (expected) | 0 | $0.0000 |
+| YouTube watch page | detail page, embedded JSON | polite | done | 1 / 1 | $0.0176 |
 
-The Reddit row used `unrestricted` mode only to test feed discovery on a page
-whose `robots.txt` forbids crawlers. The default `polite` mode refuses that path;
-run the override only on sites you have permission to scrape.
+Costs are for `deepseek-v4.1-flash`; frontier models are roughly 10-50x more
+expensive per build. Reddit used `unrestricted` mode only to test feed discovery;
+the default `polite` mode refuses that path. Run the override only on sites you
+have permission to scrape.
 
 Method, threats to validity and reproduction commands:
 [docs/EVALUATION.md](docs/EVALUATION.md). The same AutoScout page, run explicitly
@@ -255,14 +256,14 @@ The sandbox then:
 - Keys live in memory for one job, are redacted from logs, never stored in the
   database, and are absent from the sandbox environment.
 - `proxies.json` is excluded from the download zip.
-- The sandbox is a guardrail, not a hardened jail â€” see
+- The sandbox is a guardrail, not a hardened jail — see
   [SECURITY.md](SECURITY.md).
 
 ## Configuration
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SCRAPESMITH_API_KEY` | â€” | Fallback key if the form field is empty |
+| `SCRAPESMITH_API_KEY` | — | Fallback key if the form field is empty |
 | `SCRAPESMITH_PROVIDER` | `openai` | Preset selected in the UI |
 | `SCRAPESMITH_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible base URL |
 | `SCRAPESMITH_MODEL` | `gpt-4.1-mini` | Default model |
@@ -271,7 +272,7 @@ The sandbox then:
 | `SCRAPESMITH_SANDBOX_TIMEOUT` | `180` | Per subprocess limit (s) |
 | `SCRAPESMITH_SANDBOX_MAX_PAGES` | `1` | Pages fetched during the proof |
 | `SCRAPESMITH_REASONING_EFFORT` | `low` | Keeps tokens for code |
-| `SCRAPESMITH_LLM_HEADERS` | â€” | Extra request headers as JSON, for gateways that require them |
+| `SCRAPESMITH_LLM_HEADERS` | — | Extra request headers as JSON, for gateways that require them |
 | `SCRAPESMITH_ALLOW_PRIVATE` | `0` | Allow local hosts (testing only) |
 
 ## Limitations
@@ -279,11 +280,14 @@ The sandbox then:
 - **No headless browser.** JavaScript shells are handled through structured
   siblings, not rendering. Sites with neither are out of reach in v1.
 - **Chat Completions only.** Models that require the Responses API need an
-  adapter.
+  adapter. The agent tool protocol is text or JSON, not native function calling.
+- **The sandbox is a guardrail, not a jail.** Generated code runs with a timeout
+  and a scrubbed environment, but it can still make network calls and read files
+  your user can read. Use a container or VM for untrusted use.
 - **One page of proof.** The sandbox proves the bundle runs, not that it crawls a
   whole catalogue correctly.
 - **Single node.** SQLite and a local job directory; no queue or shared storage.
-- **Small evaluation.** Five targets, one model, one day. Treat the numbers as a
+- **Small evaluation.** Six targets, one model, one day. Treat the numbers as a
   smoke test, not a benchmark.
 
 ## Documentation
@@ -318,7 +322,7 @@ from JSON endpoints to server-rendered payloads, and mappers that must coerce
 postal codes without turning `3250.0` into `32500`.
 
 ScrapeSmith packages those rules so the next site takes an afternoon, not a
-sprint â€” and so someone who has never written a scraper can produce one without
+sprint — and so someone who has never written a scraper can produce one without
 having to know the pitfalls first.
 
 ## License

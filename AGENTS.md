@@ -1,7 +1,7 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 This file is the entry point for coding agents (Codex, Claude Code, Cursor,
-Gemini CLI, Copilot, â€¦). Read it before touching the repo.
+Gemini CLI, Copilot, …). Read it before touching the repo.
 
 ## What this repo is
 
@@ -19,7 +19,7 @@ three supported paths:
 | The site is a JavaScript shell, blocked, or the model failed | **Scaffold + hand-write**, then validate |
 | A bundle already exists and needs review/repair | **Validate**, then run its `runner.sh` |
 
-## Path A â€” generate (default)
+## Path A — generate (default)
 
 ```bash
 # 1. environment
@@ -40,13 +40,13 @@ bundle is already proven: `raw.jsonl` and `mapped.jsonl` exist.
 
 Useful flags:
 
-- `--mode polite` (default) or `--mode unrestricted` â€” the second one ignores
+- `--mode polite` (default) or `--mode unrestricted` — the second one ignores
   `robots.txt`. **Never use it without explicit user permission.**
-- `--proxies path-or-json` â€” a file, JSON array, or newline list.
-- `--model`, `--base-url`, `--provider` â€” override the provider preset.
-- `--out DIR` â€” copy the finished bundle (never copies `proxies.json`).
+- `--proxies path-or-json` — a file, JSON array, or newline list.
+- `--model`, `--base-url`, `--provider` — override the provider preset.
+- `--out DIR` — copy the finished bundle (never copies `proxies.json`).
 
-## Path B â€” scaffold + hand-write
+## Path B — scaffold + hand-write
 
 Use this when the site needs logic the generator could not verify, or when the
 user asks you to write the scraper yourself.
@@ -66,7 +66,7 @@ Keep the reference plumbing: `load_proxies`, `ProxyPool`, `request`, `run`,
 Read `docs/BUNDLE-CONTRACT.md` for the exact requirements, and
 `docs/AGENT-WORKFLOW.md` for the decision tree and failure playbook.
 
-## Path C â€” review or repair an existing bundle
+## Path C — review or repair an existing bundle
 
 ```bash
 python scripts/validate_bundle.py ./bundles/site
@@ -76,9 +76,9 @@ cd ./bundles/site && bash runner.sh
 
 If the sandbox produced zero records, inspect in this order:
 
-1. `probe.json` â€” was the page a shell, blocked, or disallowed?
-2. `agent_trace.json` â€” which sources returned 2xx, with what content type?
-3. the sandbox stdout/stderr â€” status codes, selector misses, parse errors.
+1. `probe.json` — was the page a shell, blocked, or disallowed?
+2. `agent_trace.json` — which sources returned 2xx, with what content type?
+3. the sandbox stdout/stderr — status codes, selector misses, parse errors.
 
 ## Hard rules
 
@@ -92,7 +92,7 @@ If the sandbox produced zero records, inspect in this order:
   deliverable.
 - **Do not edit `app/reference/`** to make one site work. That template is the
   contract for every site. Site-specific changes go in the generated bundle.
-- **Do not commit `data/`** â€” it holds scraped content, job artifacts and proxy
+- **Do not commit `data/`** — it holds scraped content, job artifacts and proxy
   lists.
 - **One page of proof is not a crawl guarantee.** Say so when reporting.
 
@@ -102,14 +102,14 @@ If the sandbox produced zero records, inspect in this order:
 |---|---|
 | `app/discovery.py` | Polite probe: robots, headers, API candidates, embedded state, repeated blocks, signals |
 | `app/agent.py` | Bounded fetch tool + verify-before-write loop |
-| `app/prompt.py` | Reference bundle + schema + probe â†’ prompt; candidate URL list |
+| `app/prompt.py` | Reference bundle + schema + probe → prompt; candidate URL list |
 | `app/validate.py` | AST, forbidden imports, secret scan, contract, schema coverage |
 | `app/sandbox.py` | Subprocess run, JSONL contract, preview, fill rates |
 | `app/pipeline.py` | State machine and repair loop |
-| `app/reference/` | Golden scraper, mapper, runner, schema â€” the contract |
+| `app/reference/` | Golden scraper, mapper, runner, schema — the contract |
 | `app/cli.py` | Functions behind `scripts/build.py`, `validate_bundle.py`, `scaffold_bundle.py` |
 | `docs/` | Architecture, decisions, evaluation, workflow, contract |
-| `tests/` | 51 offline tests; run `pytest -q` before claiming success |
+| `tests/` | 55 offline tests; run `pytest -q` before claiming success |
 
 ## Definition of done
 

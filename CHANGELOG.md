@@ -1,6 +1,6 @@
-﻿# Changelog
+# Changelog
 
-## 0.1.0 â€” 2026-11-01
+## 0.1.0 — 2026-11-01
 
 First public version.
 
@@ -22,7 +22,9 @@ First public version.
   Groq, Together, Ollama, custom); no vendor lock-in.
 - FastAPI UI with SSE live log, file tabs, zip download, JSON API and OpenAPI
   docs.
-- 51 tests, ruff, GitHub Actions CI.
+- 55 tests, ruff, GitHub Actions CI.
 - Agent interface: `AGENTS.md` plus `CLAUDE.md`, `GEMINI.md`, Copilot and Cursor
   pointers; non-interactive `scripts/build.py` (JSON + exit codes),
   `scripts/validate_bundle.py` and `scripts/scaffold_bundle.py`.
+- Hardening from review: public-suffix domain guard (`tldextract`), Retry-After
+  aware backoff, real HTML/JSON-LD fallback, working Mongo sink, JSON tool calls.

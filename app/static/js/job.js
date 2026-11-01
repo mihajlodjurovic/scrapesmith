@@ -135,11 +135,13 @@ function init(root) {
       for (const column of columns) {
         const td = document.createElement('td');
         const value = row[column];
-        td.textContent = Array.isArray(value)
-          ? value.join(', ').slice(0, 90)
+        const text = Array.isArray(value)
+          ? value.join(', ').slice(0, 120)
           : value === null || value === undefined
             ? '—'
-            : String(value).slice(0, 90);
+            : String(value).slice(0, 120);
+        td.textContent = text;
+        td.title = text;
         tr.append(td);
       }
       body.append(tr);

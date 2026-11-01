@@ -11,6 +11,19 @@ from .config import BASE_DIR
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
 
+def asset_url(path: str) -> str:
+    """Cache-bust static assets by file mtime."""
+    relative = path.lstrip("/")
+    if relative.startswith("static/"):
+        relative = relative[len("static/") :]
+    file = BASE_DIR / "app" / "static" / relative
+    try:
+        version = int(file.stat().st_mtime)
+    except OSError:
+        version = 0
+    return f"/static/{relative}?v={version}"
+
+
 def time_ago(value: float | None) -> str:
     if not value:
         return ""
@@ -32,3 +45,4 @@ def money(value: float | None) -> str:
 
 templates.env.filters["time_ago"] = time_ago
 templates.env.filters["money"] = money
+templates.env.globals["asset_url"] = asset_url

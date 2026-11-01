@@ -10,6 +10,18 @@ const errorBox = document.getElementById('form-error');
 const submitButton = document.getElementById('submit-btn');
 const jobsList = document.getElementById('jobs-list');
 const activeCount = document.getElementById('active-count');
+const buildHint = document.getElementById('build-hint');
+
+function updateBuildHint() {
+  const mode = document.querySelector('input[name="mode"]:checked');
+  const label = mode && mode.value === 'unrestricted' ? 'not polite' : 'polite';
+  buildHint.textContent = `${modelInput.value || 'model'} · ${label} · 1-page proof run`;
+}
+
+for (const input of document.querySelectorAll('input[name="mode"]')) {
+  input.addEventListener('change', updateBuildHint);
+}
+modelInput.addEventListener('input', updateBuildHint);
 
 const STATUS_LABEL = {
   queued: 'queued',
@@ -64,6 +76,7 @@ async function loadProviders() {
   }
   providerSelect.value = data.defaults.provider;
   applyPreset(data.defaults.provider);
+  updateBuildHint();
 
   if (data.has_env_key) {
     keyHint.textContent =
@@ -71,7 +84,10 @@ async function loadProviders() {
   }
 }
 
-providerSelect.addEventListener('change', () => applyPreset(providerSelect.value));
+providerSelect.addEventListener('change', () => {
+  applyPreset(providerSelect.value);
+  updateBuildHint();
+});
 
 function readProxies(raw) {
   const text = raw.trim();
@@ -84,6 +100,7 @@ function readProxies(raw) {
 }
 
 function payloadFromForm() {
+  const mode = document.querySelector('input[name="mode"]:checked');
   return {
     url: document.getElementById('url').value.trim(),
     provider: providerSelect.value,
@@ -91,7 +108,7 @@ function payloadFromForm() {
     model: modelInput.value.trim(),
     api_key: document.getElementById('api_key').value.trim(),
     proxies: readProxies(document.getElementById('proxies').value),
-    mode: document.getElementById('mode').value,
+    mode: mode ? mode.value : 'polite',
     fields: document.getElementById('fields').value.trim(),
     instructions: document.getElementById('instructions').value.trim(),
   };

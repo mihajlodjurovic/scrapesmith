@@ -67,8 +67,11 @@ def describe_probe(probe: dict[str, Any]) -> list[str]:
         lines.append("JSON-LD: " + ", ".join(str(item.get("type")) for item in ld[:5]))
     if probe.get("block_markers"):
         lines.append(
-            "Warning: page shows anti-bot markers: " + ", ".join(probe["block_markers"]),
-            "warn",
+            (
+                "Warning: page shows anti-bot markers: "
+                + ", ".join(probe["block_markers"]),
+                "warn",
+            )
         )
     return lines
 

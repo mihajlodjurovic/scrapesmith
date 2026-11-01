@@ -112,6 +112,13 @@ def test_pipeline_stops_before_paying_when_robots_disallows(monkeypatch) -> None
     assert calls["build"] == 0
 
 
+def test_describe_probe_returns_warn_tuple_for_block_markers() -> None:
+    report = dict(FAKE_PROBE)
+    report["block_markers"] = ["captcha", "just a moment"]
+    lines = pipeline.describe_probe(report)
+    assert any(isinstance(line, tuple) and line[1] == "warn" for line in lines)
+
+
 def test_not_polite_mode_continues_despite_robots(monkeypatch) -> None:
     async def strict_probe(url: str, proxies: list[str]) -> dict:
         report = dict(FAKE_PROBE)

@@ -70,7 +70,7 @@ For the successful bundles:
 | Static contract violations | 0 |
 | Bundle completeness on first reply | 6/6 builds |
 | Sandbox attempts used | 1 per build |
-| `pytest` suite | 58 tests, no network |
+| `pytest` suite | 60 tests, no network |
 | Generated code includes `ProxyPool`, `DELAY`, retries | yes |
 | Hardcoded credentials | none |
 | Fill rate, `title` / `url` / `id` | 100% |

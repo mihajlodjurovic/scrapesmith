@@ -260,9 +260,16 @@ def extract_payload(response: requests.Response) -> dict:
 
     match = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', response.text, re.S)
     if match:
-        data = json.loads(match.group(1))
-        page_props = data.get("props", {}).get("pageProps", {})
-        return {"items": as_items(page_props.get("items"))}
+        try:
+            data = json.loads(match.group(1))
+        except (TypeError, json.JSONDecodeError) as exc:
+            print(f"[warn] malformed __NEXT_DATA__: {exc}")
+            data = None
+        if isinstance(data, dict):
+            page_props = data.get("props", {}).get("pageProps", {})
+            items = as_items(page_props.get("items"))
+            if items:
+                return {"items": items}
 
     base_url = str(response.url)
     json_ld_items = extract_json_ld_items(response.text, base_url)

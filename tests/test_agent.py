@@ -96,6 +96,28 @@ def test_reference_normalises_nested_api_shapes() -> None:
     assert reference.as_items({"data": "not a list"}) == []
 
 
+def test_malformed_next_data_falls_back_instead_of_stopping() -> None:
+    class Response:
+        headers = {"content-type": "text/html; charset=utf-8"}
+        url = "https://example.com/list"
+        text = (
+            '<script id="__NEXT_DATA__">{"broken":}</script>'
+            '<article><a href="/cars/1">Volkswagen Golf</a></article>'
+        )
+
+    payload = reference.extract_payload(Response())
+    assert payload["items"][0]["url"] == "https://example.com/cars/1"
+
+
+def test_malformed_next_data_without_fallback_is_empty() -> None:
+    class Response:
+        headers = {"content-type": "text/html"}
+        url = "https://example.com/list"
+        text = '<script id="__NEXT_DATA__">not json</script>'
+
+    assert reference.extract_payload(Response()) == {"items": []}
+
+
 def test_agent_fetches_then_returns_bundle(monkeypatch) -> None:
     replies = [
         ("TOOL: fetch https://example.com/list.rss", {"cost": 0.001}),

@@ -45,6 +45,10 @@ Useful flags:
 - `--proxies path-or-json` — a file, JSON array, or newline list.
 - `--model`, `--base-url`, `--provider` — override the provider preset.
 - `--out DIR` — copy the finished bundle (never copies `proxies.json`).
+- `--browser auto|always|off` — headless-browser fallback for JavaScript-rendered
+  pages (needs `pip install -r requirements-browser.txt` and
+  `python -m playwright install chromium`). `result.json` reports the winning
+  `strategy`: `http`, `api` (captured JSON replayed with requests) or `browser`.
 
 ## Path B — scaffold + hand-write
 
@@ -86,7 +90,9 @@ If the sandbox produced zero records, inspect in this order:
   `robots.txt` disallows the path, stop and tell the user; only switch to
   `unrestricted` with explicit permission.
 - **No bypass.** Never add logins, CAPTCHA solving, paywall circumvention or
-  private-data collection.
+  private-data collection. Never fetch the data from archives (archive.org),
+  search engines, caches or scraping APIs when the site blocks you — report the
+  block instead; the validator rejects such bundles.
 - **No secrets.** API keys live in `.env`; proxy credentials in `proxies.json`.
   Never commit either, never print them, never copy `proxies.json` into a
   deliverable.
@@ -100,6 +106,7 @@ If the sandbox produced zero records, inspect in this order:
 
 | Path | Purpose |
 |---|---|
+| `app/render.py` | Headless Chromium render: captured XHR/fetch JSON, rendered DOM, SSRF-guarded routing |
 | `app/discovery.py` | Polite probe: robots, headers, API candidates, embedded state, repeated blocks, signals |
 | `app/agent.py` | Bounded fetch tool + verify-before-write loop |
 | `app/prompt.py` | Reference bundle + schema + probe → prompt; candidate URL list |
@@ -109,7 +116,7 @@ If the sandbox produced zero records, inspect in this order:
 | `app/reference/` | Golden scraper, mapper, runner, schema — the contract |
 | `app/cli.py` | Functions behind `scripts/build.py`, `validate_bundle.py`, `scaffold_bundle.py` |
 | `docs/` | Architecture, decisions, evaluation, workflow, contract |
-| `tests/` | 60 offline tests; run `pytest -q` before claiming success |
+| `tests/` | 114 tests (browser tests skip without Playwright); run `pytest -q` before claiming success |
 
 ## Definition of done
 

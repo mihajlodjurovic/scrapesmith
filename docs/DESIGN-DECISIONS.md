@@ -108,7 +108,7 @@ the model is the user's choice.
 limitation. Local models that need no key (Ollama) are supported by leaving the
 key empty.
 
-## 10. No headless browser in v1
+## 10. No headless browser in v1 (superseded by 11)
 
 **Context.** Playwright would cover JavaScript-heavy sites but adds hundreds of
 megabytes, makes runs slow and non-deterministic, and weakens the "fast, polite"
@@ -119,3 +119,22 @@ siblings (RSS/JSON/API) and the limitation is stated in the UI and README.
 
 **Consequences.** Some sites are out of reach, but every successful build is
 reproducible and cheap. A browser fallback remains on the roadmap.
+
+## 11. Browser fallback: capture the API first, render as a last resort
+
+**Context.** Decision 10 left client-side rendered sites out of reach. Most of
+them load their data from a JSON endpoint that the page calls after JavaScript
+runs; a smaller number need a real browser every time (signed requests,
+per-session tokens).
+
+**Decision.** Playwright is an optional extra. The pipeline tries strategies in
+cost order: plain HTTP (with the rendered page attached when the probe looks like
+a shell), then a requests bundle that replays an XHR/fetch endpoint the browser
+captured, and only then a Playwright bundle with the same contract. Every browser
+request, including each redirect hop, is SSRF-checked in a route handler, because
+Chromium does not send redirect hops back through Playwright routing.
+
+**Consequences.** Browser builds are slower (seconds per page instead of
+milliseconds), need a Chromium download, and get a longer proof timeout. In
+exchange, most "JavaScript" sites still end up with a fast requests scraper, and
+`off` reproduces the old behaviour exactly. Decision 10 is superseded.

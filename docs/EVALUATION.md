@@ -20,6 +20,26 @@ Sites were chosen to span the shapes the tool claims to handle: server-rendered
 HTML, a JavaScript shell with a feed, a real JSON API, and a site whose
 `robots.txt` forbids crawling. Each build starts from a single URL.
 
+## Browser fallback (2026-11-12)
+
+Same model (`deepseek-v4.1-flash`), polite mode, `--browser auto`, 2 repair
+rounds, no manual fixes. The two forced rows replace earlier strategies with a
+simulated failure to exercise the later ones with the real model.
+
+| Target | Shape | Strategy that won | Records | Cost | Rounds |
+|---|---|---|---:|---:|---:|
+| `books.toscrape.com` | static HTML (regression) | http | 20 / 20 | $0.0068 | 1 |
+| `quotes.toscrape.com/scroll` | infinite scroll, XHR `/api/quotes` | http, replaying the captured API | 10 / 10 | $0.0056 | 1 |
+| `quotes.toscrape.com/js/` | data in an inline JS variable | http, parsing the script | 10 / 10 | $0.0063 | 1 |
+| local CSR test site (`tests/csr_site.py`) | empty `#root`, `fetch('/api/items')` | http, replaying the captured API | 8 / 8 | $0.0048 | 1 |
+| local CSR test site, http forced to fail | same | browser (Playwright bundle) | 8 / 8 | $0.0069 | 1 |
+
+On every client-side site the early render handed the model the endpoint the
+page calls, so the cheap requests bundle won; the Playwright bundle is the last
+resort and also passed on its first round when forced. Before the placeholder
+fix in the secret scanner, `books.toscrape.com` needed two extra repair rounds
+because the model's README showed `mongodb://user:pass@...` as an example.
+
 ## Results
 
 | Target | Shape | Mode | Outcome | Records | Cost | Source chosen |

@@ -9,6 +9,7 @@ from .config import (
     LLM_EXTRA_HEADERS,
     LLM_MAX_TOKENS,
     LLM_REASONING_EFFORT,
+    LLM_RETRY_MAX_TOKENS,
     LLM_TIMEOUT_SECONDS,
 )
 
@@ -113,6 +114,20 @@ async def chat(
                     text_parts.append(str(part["text"]))
 
     text = "".join(text_parts).strip()
+    if not text and finish_reason == "length" and max_tokens < LLM_RETRY_MAX_TOKENS:
+        # Thinking models sometimes spend the whole budget reasoning. One retry with
+        # a larger budget usually leaves room for the answer.
+        retry_text, retry_usage = await chat(
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+            messages=messages,
+            max_tokens=LLM_RETRY_MAX_TOKENS,
+            temperature=temperature,
+        )
+        merged = dict(retry_usage)
+        merged["cost"] = usage_cost(usage) + usage_cost(retry_usage)
+        return retry_text, merged
     if not text:
         raise LLMError(
             "Model returned no text "

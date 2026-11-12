@@ -1,0 +1,4 @@
+playwright>=1.48
+beautifulsoup4>=4.12
+# After installing: python -m playwright install chromium
+# pymongo>=4.6  # only needed when the scraper is run with --mongo

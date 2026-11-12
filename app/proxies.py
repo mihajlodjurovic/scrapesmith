@@ -25,8 +25,12 @@ def _from_object(item: dict) -> str | None:
     return server
 
 
+# Characters left over when a list is pasted as "[a, b]" or '"a",' without valid JSON.
+_LIST_PUNCTUATION = "[](),;\"' \t"
+
+
 def _from_line(line: str) -> str | None:
-    line = line.strip()
+    line = line.strip().strip(_LIST_PUNCTUATION)
     if not line or line.startswith("#"):
         return None
     if "://" in line:
@@ -52,7 +56,8 @@ def parse_proxies(raw: str | list | None) -> list[str]:
         try:
             raw = json.loads(text)
         except json.JSONDecodeError:
-            return [url for line in text.splitlines() if (url := _from_line(line))]
+            # Not JSON: one proxy per line, or several separated by commas.
+            raw = [chunk for line in text.splitlines() for chunk in line.split(",")]
 
     if isinstance(raw, dict):
         raw = raw.get("proxies") or raw.get("list") or []

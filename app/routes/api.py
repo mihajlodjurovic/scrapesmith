@@ -13,8 +13,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from .. import db
+from .. import db, render
 from ..config import (
+    BROWSER_MODE,
     DEFAULT_BASE_URL,
     DEFAULT_MODEL,
     DEFAULT_PROVIDER,
@@ -50,6 +51,7 @@ class JobCreate(BaseModel):
     model: str = ""
     proxies: str | list | None = None
     mode: str = "polite"
+    browser: str = ""
     fields: str = Field(default="", max_length=500)
     instructions: str = Field(default="", max_length=2000)
 
@@ -61,6 +63,14 @@ class JobCreate(BaseModel):
             raise ValueError("mode must be 'polite' or 'unrestricted'")
         return value
 
+    @field_validator("browser")
+    @classmethod
+    def _valid_browser(cls, value: str) -> str:
+        value = (value or "").strip().lower()
+        if value and value not in {"auto", "always", "off"}:
+            raise ValueError("browser must be 'auto', 'always' or 'off'")
+        return value
+
     @field_validator("url")
     @classmethod
     def _clean_url(cls, value: str) -> str:
@@ -68,6 +78,16 @@ class JobCreate(BaseModel):
         if not value.startswith(("http://", "https://")):
             value = f"https://{value}"
         return value
+
+
+def _trusted_base_urls() -> set[str]:
+    urls = {DEFAULT_BASE_URL.rstrip("/")}
+    urls.update(
+        preset["base_url"].rstrip("/")
+        for preset in PROVIDER_PRESETS.values()
+        if preset.get("base_url")
+    )
+    return urls
 
 
 def _active_jobs() -> int:
@@ -117,7 +137,9 @@ def providers() -> dict[str, Any]:
             "provider": DEFAULT_PROVIDER,
             "base_url": DEFAULT_BASE_URL,
             "model": DEFAULT_MODEL,
+            "browser": BROWSER_MODE if BROWSER_MODE in {"auto", "always", "off"} else "auto",
         },
+        "browser_available": render.available(),
     }
 
 
@@ -138,6 +160,15 @@ async def create(request: Request, payload: JobCreate) -> dict[str, Any]:
             status_code=400,
             detail="No API key: set SCRAPESMITH_API_KEY in .env or paste one.",
         )
+    if not payload.api_key and ENV_API_KEY and base_url not in _trusted_base_urls():
+        # The server's own key must never be sent to an endpoint chosen by the client.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "The server key is only used with SCRAPESMITH_BASE_URL or a preset "
+                "endpoint. Paste a key to use a custom base URL."
+            ),
+        )
     if _active_jobs() >= MAX_ACTIVE_JOBS:
         raise HTTPException(status_code=429, detail="Too many jobs running. Wait a bit.")
 
@@ -149,6 +180,7 @@ async def create(request: Request, payload: JobCreate) -> dict[str, Any]:
         {
             "proxies": payload.proxies,
             "mode": payload.mode,
+            "browser": payload.browser,
             "fields": payload.fields,
             "instructions": payload.instructions,
         },

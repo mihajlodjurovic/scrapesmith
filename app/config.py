@@ -31,6 +31,8 @@ ENV_API_KEY = (
 
 LLM_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_LLM_TIMEOUT", "300"))
 LLM_MAX_TOKENS = int(os.getenv("SCRAPESMITH_LLM_MAX_TOKENS", "16000"))
+# One retry with this budget when a thinking model spends everything on reasoning.
+LLM_RETRY_MAX_TOKENS = int(os.getenv("SCRAPESMITH_LLM_RETRY_MAX_TOKENS", "32000"))
 MAX_REPAIR_ATTEMPTS = int(os.getenv("SCRAPESMITH_MAX_REPAIRS", "2"))
 
 # Discovery limits
@@ -43,6 +45,23 @@ ALLOW_PRIVATE_NETWORKS = os.getenv("SCRAPESMITH_ALLOW_PRIVATE", "0") == "1"
 SANDBOX_TIMEOUT_SECONDS = int(os.getenv("SCRAPESMITH_SANDBOX_TIMEOUT", "180"))
 SANDBOX_MAX_PAGES = int(os.getenv("SCRAPESMITH_SANDBOX_MAX_PAGES", "1"))
 SANDBOX_MAX_OUTPUT_BYTES = int(os.getenv("SCRAPESMITH_SANDBOX_MAX_OUTPUT", "5_000_000"))
+
+# Headless browser fallback for client-side rendered pages (needs the optional
+# `playwright` package and `playwright install chromium`).
+#   auto   render when the probe looks like a JavaScript shell, and fall back to a
+#          browser-based scraper when the plain HTTP bundle fails (default)
+#   always render every page during discovery, same fallback rules
+#   off    never start a browser
+# Anti-bot wall + proxies: how many proxies to test before the model is called
+# (0 = every proxy in the list), how many at once, and the per-proxy timeout.
+PROXY_CHECK_LIMIT = int(os.getenv("SCRAPESMITH_PROXY_CHECK_LIMIT", "0"))
+PROXY_CHECK_CONCURRENCY = int(os.getenv("SCRAPESMITH_PROXY_CHECK_CONCURRENCY", "8"))
+PROXY_CHECK_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_PROXY_CHECK_TIMEOUT", "12"))
+
+BROWSER_MODE = os.getenv("SCRAPESMITH_BROWSER", "auto").strip().lower()
+BROWSER_MODES = {"auto", "always", "off"}
+RENDER_TIMEOUT_SECONDS = float(os.getenv("SCRAPESMITH_RENDER_TIMEOUT", "45"))
+BROWSER_SANDBOX_TIMEOUT_SECONDS = int(os.getenv("SCRAPESMITH_BROWSER_SANDBOX_TIMEOUT", "300"))
 
 # Politeness mode. "polite" respects robots.txt; "unrestricted" ignores it.
 DEFAULT_MODE = os.getenv("SCRAPESMITH_MODE", "polite")

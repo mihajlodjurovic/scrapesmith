@@ -117,11 +117,14 @@ def test_guess_source_prefers_the_verified_trace() -> None:
     probe = dict(FAKE_PROBE)
     assert pipeline._guess_source(probe) == "html"
     assert pipeline._guess_source(
-        probe, [{"url": "https://example.com/list.rss", "observation": {}}]
+        probe, [{"url": "https://example.com/list.rss", "observation": {"status": 200}}]
     ) == "feed"
     assert pipeline._guess_source(
-        probe, [{"url": "https://example.com/list.json", "observation": {}}]
+        probe, [{"url": "https://example.com/list.json", "observation": {"status": 200}}]
     ) == "json api"
+    assert pipeline._guess_source(
+        probe, [{"url": "https://example.com/list.json", "observation": {"status": 404}}]
+    ) == "html"
     probe["embedded_state"] = [{"kind": "YouTube player response", "present": True}]
     assert pipeline._guess_source(probe) == "embedded state"
 
@@ -161,3 +164,24 @@ def test_not_polite_mode_continues_despite_robots(monkeypatch) -> None:
     assert updated["status"] == "done"
     assert updated["summary"]["mode"] == "unrestricted"
     assert calls["build"] == 1
+
+
+def test_log_survives_a_console_that_cannot_encode_the_message(monkeypatch) -> None:
+    import io
+    import sys
+
+    console = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", console)
+    job = db.create_job("https://example.com/list", "openai", "https://api.test/v1", "m", {})
+    pipeline.Log(job["id"], "")("GET /api -> 10 items → ✓")
+    assert "→" in db.events_since(job["id"])[-1]["message"]
+
+
+def test_source_is_judged_by_content_type_not_by_url() -> None:
+    probe = dict(FAKE_PROBE)
+    html_rss = {"url": "https://x.test/list.rss",
+                "observation": {"status": 200, "content_type": "text/html"}}
+    real_feed = {"url": "https://x.test/feed",
+                 "observation": {"status": 200, "content_type": "application/atom+xml"}}
+    assert pipeline._guess_source(probe, [html_rss]) == "html"
+    assert pipeline._guess_source(probe, [html_rss, real_feed]) == "feed"

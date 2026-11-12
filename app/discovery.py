@@ -126,8 +126,16 @@ async def _check_target(url: str) -> None:
         )
 
 
+async def ssrf_guard(request: httpx.Request) -> None:
+    """httpx request hook: re-check every hop, including redirects."""
+    try:
+        await _check_target(str(request.url))
+    except DiscoveryError as exc:
+        raise DiscoveryError(f"{exc} (blocked {request.url.host})") from None
+
+
 async def _fetch_once(
-    url: str, proxy: str | None
+    url: str, proxy: str | None, timeout: float = FETCH_TIMEOUT_SECONDS
 ) -> tuple[httpx.Response, str]:
     headers = {
         "User-Agent": USER_AGENT,
@@ -136,9 +144,10 @@ async def _fetch_once(
     }
     kwargs: dict[str, Any] = {
         "headers": headers,
-        "timeout": FETCH_TIMEOUT_SECONDS,
+        "timeout": timeout,
         "follow_redirects": True,
         "max_redirects": 5,
+        "event_hooks": {"request": [ssrf_guard]},
     }
     if proxy:
         kwargs["proxy"] = proxy
@@ -166,6 +175,73 @@ async def _fetch(url: str, pool: ProxyPool) -> tuple[httpx.Response, str]:
         last_error = DiscoveryError(f"proxy returned {response.status_code}")
 
     raise DiscoveryError(f"Could not fetch the page. Last error: {last_error}")
+
+
+CHALLENGE_STATUSES = {401, 403, 429, 503}
+
+
+def challenge_markers(html: str) -> list[str]:
+    lowered = html[:200_000].lower()
+    return [m for m in BLOCK_MARKERS if m in lowered and m != "enable javascript"]
+
+
+async def find_unblocked(
+    url: str,
+    pool: ProxyPool,
+    limit: int = 0,
+    concurrency: int = 8,
+    timeout: float = FETCH_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
+    """Test the pool's proxies (all of them when `limit` is 0) against `url`.
+
+    One plain GET per proxy, `concurrency` at a time, no model call. Stops as soon
+    as one proxy reaches the page without an anti-bot challenge. Used when the
+    probe hit a wall, to decide whether the proxies are worth spending tokens on.
+    """
+    candidates = pool.proxies
+    if limit > 0:
+        candidates = candidates[:limit]
+    tested: list[dict[str, Any]] = []
+    found: dict[str, Any] = {}
+    gate = asyncio.Semaphore(max(1, concurrency))
+
+    async def check(proxy: str) -> None:
+        async with gate:
+            if found:
+                return  # another proxy already got through
+            try:
+                response, used = await _fetch_once(url, proxy, timeout)
+            except Exception as exc:  # noqa: BLE001 - a dead proxy is just a failed try
+                pool.report(proxy, False)
+                tested.append({"proxy": mask_proxy(proxy), "error": type(exc).__name__})
+                return
+            html = response.content[:200_000].decode(response.encoding or "utf-8", "replace")
+            markers = challenge_markers(html)
+            blocked = response.status_code in CHALLENGE_STATUSES or bool(markers)
+            pool.report(proxy, not blocked, response.status_code)
+            tested.append({"proxy": used, "status": response.status_code, "markers": markers})
+            if not blocked and not found:
+                found["proxy"] = used
+
+    await asyncio.gather(*(check(proxy) for proxy in candidates))
+    return {"passed_via": found.get("proxy"), "tested": tested, "total": len(candidates)}
+
+
+def summarize_check(check: dict[str, Any]) -> str:
+    """One line instead of a hundred: how the tested proxies were answered."""
+    counts: dict[str, int] = {}
+    for attempt in check["tested"]:
+        if attempt.get("error"):
+            key = f"dead ({attempt['error']})"
+        elif attempt.get("markers"):
+            key = f"challenged ({attempt['status']})"
+        else:
+            key = f"HTTP {attempt['status']}"
+        counts[key] = counts.get(key, 0) + 1
+    ranked = sorted(counts.items(), key=lambda item: -item[1])
+    parts = ", ".join(f"{count} {key}" for key, count in ranked)
+    tested = len(check["tested"])
+    return f"Tested {tested}/{check.get('total', tested)} proxies: {parts}"
 
 
 async def _robots(url: str, pool: ProxyPool) -> dict[str, Any]:

@@ -10,6 +10,8 @@ _TMP = Path(tempfile.mkdtemp(prefix="scrapesmith-tests-"))
 os.environ["SCRAPESMITH_DATA_DIR"] = str(_TMP)
 os.environ["SCRAPESMITH_API_KEY"] = ""
 os.environ["SCRAPESMITH_ALLOW_PRIVATE"] = "1"
+# Tests opt in to the browser explicitly; nothing launches Chromium by accident.
+os.environ["SCRAPESMITH_BROWSER"] = "off"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

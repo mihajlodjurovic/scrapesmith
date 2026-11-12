@@ -16,6 +16,17 @@ BANNED_IMPORTS = {
     "socket",
     "subprocess",
 }
+# Browser automation other than Playwright, and anti-detection add-ons, are never
+# allowed: ScrapeSmith does not do bot-evasion.
+ALWAYS_BANNED_IMPORTS = {
+    "pyppeteer",
+    "playwright_stealth",
+    "selenium",
+    "seleniumbase",
+    "undetected_chromedriver",
+}
+# Playwright is allowed only in the browser fallback build.
+BROWSER_IMPORTS = {"playwright"}
 BANNED_CALLS = {"eval", "exec", "compile", "__import__"}
 BANNED_ATTRIBUTES = {("os", "system"), ("os", "popen"), ("os", "remove"), ("os", "rmdir")}
 
@@ -36,7 +47,67 @@ SECRET_PATTERNS = (
     ),
 )
 
+CREDENTIAL_LABELS = {"hardcoded Mongo credentials", "hardcoded proxy credentials"}
+# Documentation examples such as mongodb://user:pass@host are not secrets.
+PLACEHOLDER = re.compile(
+    r"^(user(name)?|usr|login|pass(word)?|pwd|secret|changeme|example|"
+    r"<[^>]*>|\{[^}]*\}|\$\{?\w+\}?|%\w+%|x{2,}|\*{2,}|\.{3})$",
+    re.I,
+)
+
 MAX_FILE_BYTES = 120_000
+
+# Third parties that serve someone else's copy of a page. Using them as a data
+# source turns a blocked site into a "successful" build with stale data, which is
+# exactly the ban-evasion ScrapeSmith refuses to do.
+CACHE_AND_PROXY_SERVICES = (
+    "archive.org",
+    "archive.ph",
+    "archive.today",
+    "archive.is",
+    "cachedview",
+    "webcache.googleusercontent.com",
+    "translate.goog",
+    "duckduckgo.com",
+    "google.com/search",
+    "bing.com",
+    "yandex.",
+    "startpage.com",
+    "r.jina.ai",
+    "scraperapi",
+    "scrapingbee",
+    "zenrows",
+    "scrapfly",
+    "scrapingant",
+    "crawlbase",
+    "brightdata",
+    "zyte.com",
+    "oxylabs",
+)
+# URLs that show up in scraping code without being fetched (schema ids, docs).
+NEUTRAL_HOSTS = {"schema.org", "www.schema.org", "w3.org", "www.w3.org", "ogp.me", "example.com"}
+URL_LITERAL = re.compile(r"https?://([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
+
+
+def _is_placeholder_credential(match: str) -> bool:
+    userinfo = match.split("://", 1)[-1].rsplit("@", 1)[0]
+    user, _, password = userinfo.partition(":")
+    return bool(PLACEHOLDER.match(user) and PLACEHOLDER.match(password))
+
+
+def _has_secret(pattern: re.Pattern, label: str, content: str) -> bool:
+    for match in pattern.finditer(content):
+        if label in CREDENTIAL_LABELS and _is_placeholder_credential(match.group(0)):
+            continue
+        return True
+    return False
+
+# The only files a bundle may contain. Anything else (helper.py, sitecustomize.py,
+# requests.py, ...) would sit on the sandbox PYTHONPATH without passing the AST
+# checks, so it is rejected and never written to disk.
+ALLOWED_FILES = frozenset(
+    {"scraper.py", "mapper.py", "runner.sh", "README.md", "requirements.txt", "NOTES"}
+)
 
 
 def canonical_required() -> list[str]:
@@ -55,18 +126,31 @@ def _parse(source: str, name: str) -> tuple[ast.Module | None, list[str]]:
         return None, [f"{name}: syntax error on line {exc.lineno}: {exc.msg}"]
 
 
-def _check_ast(tree: ast.Module, name: str) -> list[str]:
+def _import_error(name: str, module: str, label: str, browser: bool) -> str | None:
+    root = module.split(".")[0]
+    if root in BANNED_IMPORTS or root in ALWAYS_BANNED_IMPORTS:
+        return f"{name}: forbidden import '{label}'"
+    if root in BROWSER_IMPORTS and not browser:
+        return (
+            f"{name}: '{label}' — browser automation is only allowed in the browser "
+            "fallback build; use requests against the page or its JSON API"
+        )
+    return None
+
+
+def _check_ast(tree: ast.Module, name: str, browser: bool = False) -> list[str]:
     errors: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                root = alias.name.split(".")[0]
-                if root in BANNED_IMPORTS:
-                    errors.append(f"{name}: forbidden import '{alias.name}'")
+                error = _import_error(name, alias.name, alias.name, browser)
+                if error:
+                    errors.append(error)
         elif isinstance(node, ast.ImportFrom):
-            root = (node.module or "").split(".")[0]
-            if root in BANNED_IMPORTS:
-                errors.append(f"{name}: forbidden import 'from {node.module}'")
+            module = node.module or ""
+            error = _import_error(name, module, f"from {module}", browser)
+            if error:
+                errors.append(error)
         elif isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Name) and func.id in BANNED_CALLS:
@@ -102,14 +186,89 @@ def _canonical_keys(tree: ast.Module) -> list[str] | None:
     return None
 
 
-def validate_bundle(files: dict[str, str]) -> list[str]:
+def _string_constants(tree: ast.Module) -> list[str]:
+    return [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    ]
+
+
+def source_errors(
+    name: str,
+    tree: ast.Module,
+    target_url: str | None = None,
+    allowed_hosts: set[str] | None = None,
+) -> list[str]:
+    """Data must come from the target site, or an endpoint the page itself calls."""
+    from urllib.parse import urlparse
+
+    from .agent import registrable_domain
+
     errors: list[str] = []
+    strings = _string_constants(tree)
+    seen: set[str] = set()
+    for text in strings:
+        lowered = text.lower()
+        for service in CACHE_AND_PROXY_SERVICES:
+            if service in lowered and service not in seen:
+                seen.add(service)
+                errors.append(
+                    f"{name}: uses '{service}' — data must come from the target site, "
+                    "never from archives, search engines, caches or scraping services. "
+                    "If the site blocks you, let the scraper fail and say so in NOTES."
+                )
+
+    target_host = (urlparse(target_url or "").hostname or "").lower()
+    if not target_host:
+        return errors
+    target_domain = registrable_domain(target_host)
+    allowed = {host.lower() for host in (allowed_hosts or set())} | NEUTRAL_HOSTS
+    foreign: list[str] = []
+    for text in strings:
+        for host in URL_LITERAL.findall(text):
+            host = host.lower().rstrip(".")
+            if host in allowed or registrable_domain(host) == target_domain:
+                continue
+            if any(service in host for service in CACHE_AND_PROXY_SERVICES):
+                continue  # already reported above
+            if host not in foreign:
+                foreign.append(host)
+    if foreign:
+        errors.append(
+            f"{name}: fetches hosts outside {target_domain}: {', '.join(foreign[:5])} — "
+            "only the target site and endpoints the page itself calls are allowed"
+        )
+    return errors
+
+
+def validate_bundle(
+    files: dict[str, str],
+    browser: bool = False,
+    target_url: str | None = None,
+    allowed_hosts: set[str] | None = None,
+) -> list[str]:
+    """Static checks. `browser=True` is the headless-browser fallback build.
+
+    `target_url` enables the data-source check: URLs in the code must belong to
+    the target's registrable domain or to `allowed_hosts` (hosts the rendered page
+    called, or that the agent verified).
+    """
+    errors: list[str] = []
+
+    unexpected = sorted(name for name in files if name not in ALLOWED_FILES)
+    if unexpected:
+        errors.append(
+            f"unexpected files {', '.join(unexpected)} — put all code in scraper.py "
+            "and mapper.py; only scraper.py, mapper.py, runner.sh, README.md and "
+            "requirements.txt are allowed"
+        )
 
     for name, content in files.items():
         if len(content.encode("utf-8")) > MAX_FILE_BYTES:
             errors.append(f"{name}: file is larger than {MAX_FILE_BYTES} bytes")
         for pattern, label in SECRET_PATTERNS:
-            if pattern.search(content):
+            if _has_secret(pattern, label, content):
                 errors.append(f"{name}: {label} found — use environment variables instead")
         if "verify=False" in content.replace(" ", ""):
             errors.append(f"{name}: TLS verification disabled (verify=False)")
@@ -125,7 +284,8 @@ def validate_bundle(files: dict[str, str]) -> list[str]:
         if tree is None:
             continue
         trees[name] = tree
-        errors.extend(_check_ast(tree, name))
+        errors.extend(_check_ast(tree, name, browser))
+        errors.extend(source_errors(name, tree, target_url, allowed_hosts))
 
     scraper_tree = trees.get("scraper.py")
     if scraper_tree is not None:
@@ -170,6 +330,8 @@ def validate_bundle(files: dict[str, str]) -> list[str]:
             "beautifulsoup4" not in declared and "bs4" not in declared
         ):
             errors.append("requirements.txt: missing 'beautifulsoup4'")
+        if "playwright" in scraper_source and "playwright" not in declared:
+            errors.append("requirements.txt: missing 'playwright'")
 
     runner = files.get("runner.sh", "")
     if runner:

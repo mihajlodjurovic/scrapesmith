@@ -17,11 +17,11 @@ import tldextract
 
 from . import llm
 from .config import FETCH_TIMEOUT_SECONDS, LLM_MAX_TOKENS
-from .discovery import html_signals
+from .discovery import html_signals, ssrf_guard
 from .generator import GenerationError, parse_files
-from .prompt import SYSTEM as SCRAPER_SYSTEM
-from .prompt import user_prompt
+from .prompt import system_prompt, user_prompt
 from .proxies import ProxyPool, mask_proxy
+from .render import network_hosts
 
 TOOL_LIMIT = 6
 SAME_SITE_MIN_DELAY = 0.4
@@ -102,6 +102,8 @@ class FetchTool:
     pool: ProxyPool | None = None
     calls: int = 0
     limit: int = TOOL_LIMIT
+    # Hosts a real browser saw the page call (e.g. a third-party search API).
+    extra_hosts: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.host = registrable_domain(urlparse(self.target_url).hostname or "")
@@ -112,7 +114,8 @@ class FetchTool:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             return False
-        return registrable_domain(parsed.hostname) == self.host
+        host = parsed.hostname.lower()
+        return registrable_domain(host) == self.host or host in self.extra_hosts
 
     async def fetch(self, url: str) -> dict[str, Any]:
         if self.calls >= self.limit:
@@ -137,6 +140,7 @@ class FetchTool:
                     follow_redirects=True,
                     max_redirects=5,
                     proxy=proxy,
+                    event_hooks={"request": [ssrf_guard]},
                 ) as client:
                     response = await client.get(url)
                 used = "direct" if proxy is None else mask_proxy(proxy)
@@ -240,12 +244,22 @@ async def build_bundle(
     model: str,
     proxies: list[str],
     pool: ProxyPool | None = None,
+    browser: bool = False,
+    failure: list[str] | None = None,
 ) -> tuple[dict[str, str], float, list[dict[str, Any]]]:
     target_url = probe.get("final_url") or probe.get("url") or ""
-    tool = FetchTool(target_url=target_url, proxies=proxies, pool=pool)
+    tool = FetchTool(
+        target_url=target_url,
+        proxies=proxies,
+        pool=pool,
+        extra_hosts=network_hosts(probe),
+    )
     messages = [
-        {"role": "system", "content": SCRAPER_SYSTEM + "\n" + TOOL_PROTOCOL},
-        {"role": "user", "content": user_prompt(probe, options)},
+        {"role": "system", "content": system_prompt(browser) + "\n" + TOOL_PROTOCOL},
+        {
+            "role": "user",
+            "content": user_prompt(probe, options, browser=browser, failure=failure),
+        },
     ]
     trace: list[dict[str, Any]] = []
     cost = 0.0

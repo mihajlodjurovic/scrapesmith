@@ -81,3 +81,16 @@ def test_requirements_must_list_the_imports() -> None:
     bundle["requirements.txt"] = "beautifulsoup4>=4.12\n"
     errors = validate_bundle(bundle)
     assert any("requirements.txt" in error and "requests" in error for error in errors)
+
+
+def test_placeholder_credentials_in_docs_are_not_secrets() -> None:
+    from app.validate import SECRET_PATTERNS, _has_secret
+
+    mongo, label = SECRET_PATTERNS[0]
+    assert not _has_secret(mongo, label, "run with --mongo mongodb://user:pass@localhost:27017")
+    assert not _has_secret(mongo, label, "mongodb://<user>:<password>@cluster.example.net/db")
+    assert not _has_secret(mongo, label, "mongodb://${MONGO_USER}:${MONGO_PASS}@db:27017")
+    assert _has_secret(mongo, label, "mongodb://admin:Hunter2xyz@db.example.com:27017")
+    proxy, proxy_label = SECRET_PATTERNS[4]
+    assert not _has_secret(proxy, proxy_label, "http://user:pass@proxy.example.com:8000")
+    assert _has_secret(proxy, proxy_label, "http://alice:s3cr3t@proxy.example.com:8000")

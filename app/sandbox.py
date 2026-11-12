@@ -11,11 +11,23 @@ from pathlib import Path
 from typing import Any
 
 from .config import SANDBOX_MAX_OUTPUT_BYTES, SANDBOX_TIMEOUT_SECONDS
-from .validate import canonical_required
+from .validate import ALLOWED_FILES, canonical_required
 
 
 def _safe_env(job_dir: Path) -> dict[str, str]:
-    keep = {"PATH", "SYSTEMROOT", "TEMP", "TMP", "HOME", "USERPROFILE", "LANG"}
+    keep = {
+        "PATH",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+        "HOME",
+        "USERPROFILE",
+        "LANG",
+        # Playwright needs these to find its browser build (browser fallback only).
+        "LOCALAPPDATA",
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "XDG_CACHE_HOME",
+    }
     env = {key: value for key, value in os.environ.items() if key in keep}
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -102,6 +114,8 @@ def _run(cmd: list[str], cwd: Path, timeout: int) -> tuple[int, str, str, float]
 def write_bundle(job_dir: Path, files: dict[str, str], proxies: list[str]) -> None:
     job_dir.mkdir(parents=True, exist_ok=True)
     for name, content in files.items():
+        if name not in ALLOWED_FILES:
+            continue  # never put unvalidated modules on the sandbox PYTHONPATH
         if name == "NOTES":
             (job_dir / "NOTES.md").write_text(content, encoding="utf-8")
             continue
@@ -119,6 +133,9 @@ def run_bundle(
     timeout: int = SANDBOX_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     write_bundle(job_dir, files, proxies)
+    # A previous attempt's output must never count as this attempt's proof.
+    for stale in ("raw.jsonl", "mapped.jsonl"):
+        (job_dir / stale).unlink(missing_ok=True)
     result: dict[str, Any] = {
         "ok": False,
         "stage": "compile",

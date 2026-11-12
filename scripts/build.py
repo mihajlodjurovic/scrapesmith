@@ -39,6 +39,12 @@ def main() -> int:
     parser.add_argument("--base-url", default=None)
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--out", default="", help="copy the finished bundle here")
+    parser.add_argument(
+        "--browser",
+        default=None,
+        choices=["auto", "always", "off"],
+        help="headless-browser fallback for JavaScript-rendered pages (default: auto)",
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable stdout")
     args = parser.parse_args()
 
@@ -55,6 +61,7 @@ def main() -> int:
                 base_url=args.base_url,
                 api_key=args.api_key,
                 output_dir=args.out or None,
+                browser=args.browser,
             )
         )
 
@@ -63,7 +70,7 @@ def main() -> int:
     else:
         print(f"status : {result['status']}")
         print(f"records: {result['records']['mapped']} mapped / {result['records']['raw']} raw")
-        print(f"source : {result['source']}")
+        print(f"source : {result['source']} ({result.get('strategy') or '-'})")
         print(f"cost   : ${result['cost_usd']:.4f}")
         print(f"bundle : {result['output_dir']}")
         if result.get("copied_to"):

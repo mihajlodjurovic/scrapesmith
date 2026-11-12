@@ -1,0 +1,4 @@
+# Optional: headless-browser fallback for client-side rendered sites.
+# After installing, download the browser once:  python -m playwright install chromium
+-r requirements.txt
+playwright>=1.48

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from . import llm
-from .prompt import SYSTEM, user_prompt
+from .prompt import system_prompt, user_prompt
 
 FILE_HEADER = re.compile(r"^[#*>\s]*FILE:\s*`?([A-Za-z0-9_.\-]+)`?\s*$", re.M)
 FENCE_START = re.compile(r"^```[a-zA-Z0-9_+-]*\s*\n")
@@ -45,12 +45,11 @@ def parse_files(text: str) -> dict[str, str]:
     return files
 
 
-def ensure_requirements(files: dict[str, str]) -> None:
+def ensure_requirements(files: dict[str, str], browser: bool = False) -> None:
     """Every bundle ships its dependency list, even if the model omitted it."""
     if "requirements.txt" not in files:
-        files["requirements.txt"] = (REFERENCE_DIR / "requirements.txt").read_text(
-            encoding="utf-8"
-        )
+        name = "requirements_browser.txt" if browser else "requirements.txt"
+        files["requirements.txt"] = (REFERENCE_DIR / name).read_text(encoding="utf-8")
 
 
 async def generate(
@@ -62,7 +61,7 @@ async def generate(
     model: str,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     messages = [
-        {"role": "system", "content": SYSTEM},
+        {"role": "system", "content": system_prompt()},
         {"role": "user", "content": user_prompt(probe, options)},
     ]
     return await _chat_parse(messages, base_url, api_key, model)
@@ -75,6 +74,7 @@ async def repair(
     base_url: str,
     api_key: str,
     model: str,
+    browser: bool = False,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     rendered = "\n\n".join(
         f"### FILE: {name}\n```{_language(name)}\n{files[name]}```"
@@ -82,7 +82,7 @@ async def repair(
         if name in files
     )
     messages = [
-        {"role": "system", "content": SYSTEM},
+        {"role": "system", "content": system_prompt(browser)},
         {
             "role": "user",
             "content": (

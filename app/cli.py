@@ -15,6 +15,7 @@ from . import db, validate
 from .config import DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_PROVIDER
 from .pipeline import run_job
 from .proxies import parse_proxies
+from .render import network_hosts
 
 BUNDLE_FILES = (
     "scraper.py",
@@ -42,7 +43,21 @@ def validate_bundle_dir(path: str | Path) -> list[str]:
             continue
         files[name] = file.read_text(encoding="utf-8", errors="replace")
     if files:
-        errors.extend(validate.validate_bundle(files))
+        browser = "playwright" in files.get("scraper.py", "")
+        target_url, allowed = None, set()
+        probe_file = directory / "probe.json"
+        if probe_file.exists():
+            try:
+                probe = json.loads(probe_file.read_text(encoding="utf-8"))
+            except ValueError:
+                probe = {}
+            target_url = probe.get("final_url") or probe.get("url")
+            allowed = network_hosts(probe)
+        errors.extend(
+            validate.validate_bundle(
+                files, browser=browser, target_url=target_url, allowed_hosts=allowed
+            )
+        )
     return errors
 
 
@@ -121,6 +136,7 @@ async def build(
     base_url: str | None = None,
     api_key: str | None = None,
     output_dir: str | Path | None = None,
+    browser: str | None = None,
 ) -> dict[str, Any]:
     """Run one build end-to-end and return a machine-readable result."""
     db.init_db()
@@ -130,6 +146,8 @@ async def build(
         "fields": fields,
         "instructions": instructions,
     }
+    if browser:
+        options["browser"] = browser
     job = db.create_job(
         url,
         provider or DEFAULT_PROVIDER,
@@ -161,6 +179,7 @@ async def build(
         "cost_usd": final.get("cost_usd") or 0.0,
         "seconds": summary.get("seconds"),
         "source": summary.get("source"),
+        "strategy": summary.get("strategy"),
         "agent_trace": _trace_summary(job_dir),
         "error": final.get("error"),
     }

@@ -73,3 +73,15 @@ def test_attempts_always_end_with_direct() -> None:
     pool = ProxyPool(["http://a:1", "http://b:2", "http://c:3"])
     assert pool.attempts(2)[-1] is None
     assert len(pool.attempts(2)) <= 3
+
+
+def test_bracketed_list_without_quotes_is_parsed_cleanly() -> None:
+    from app.proxies import parse_proxies
+
+    pasted = "[1.2.3.4:6057:user:secret\n5.6.7.8:7426:user:secret\n]"
+    assert parse_proxies(pasted) == [
+        "http://user:secret@1.2.3.4:6057",
+        "http://user:secret@5.6.7.8:7426",
+    ]
+    assert parse_proxies("1.2.3.4:80, 5.6.7.8:81,") == ["http://1.2.3.4:80", "http://5.6.7.8:81"]
+    assert parse_proxies('"1.2.3.4:80",\n"1.2.3.4:80"') == ["http://1.2.3.4:80"]

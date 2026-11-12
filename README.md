@@ -350,7 +350,7 @@ The sandbox then:
 | [EVALUATION.md](docs/EVALUATION.md) | Method, results, threats to validity |
 | [SECURITY.md](SECURITY.md) | Threat model and controls |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, extension points |
-| [CHANGELOG.md](CHANGELOG.md) | What shipped in 0.1.0 |
+| [CHANGELOG.md](CHANGELOG.md) | What shipped in each release (latest: 0.2.0) |
 
 ## Roadmap
 

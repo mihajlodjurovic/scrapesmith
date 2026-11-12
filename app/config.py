@@ -16,7 +16,7 @@ JOBS_DIR = DATA_DIR / "jobs"
 DB_PATH = DATA_DIR / "scrapesmith.db"
 
 APP_NAME = "ScrapeSmith"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 
 # LLM defaults. Any OpenAI-compatible endpoint works: set the base URL, model
 # and key, or pick a preset in the UI.

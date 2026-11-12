@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-12
 
 Browser fallback for client-side rendered sites.
 

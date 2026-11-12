@@ -20,6 +20,8 @@ function init(root) {
   const fileView = document.getElementById('file-view');
   const filesMeta = document.getElementById('files-meta');
   const download = document.getElementById('download');
+  const strategyChip = document.getElementById('strategy-chip');
+  const statsEl = document.getElementById('stats');
 
   const READABLE = new Set([
     'scraper.py', 'mapper.py', 'runner.sh', 'README.md', 'requirements.txt', 'NOTES.md',
@@ -48,19 +50,33 @@ function init(root) {
     const text = document.createElement('span');
     text.textContent = event.message;
     line.append(ts, text);
-    logEl.append(line, '\n');
+    logEl.append(line);
     if (autoscroll.checked) logEl.scrollTop = logEl.scrollHeight;
   }
 
-  function setStatus(status) {
+  const STRATEGY_LABEL = {
+    http: 'plain HTTP',
+    api: 'captured API',
+    browser: 'headless browser',
+  };
+
+  // Which step a failed job died in: no model call means the probe stopped it.
+  function failedStep(job) {
+    if (!job || !job.attempts) return 0;
+    const files = job.files || [];
+    return files.some((file) => file.name === 'raw.jsonl') ? 2 : 1;
+  }
+
+  function setStatus(status, job) {
     statusPill.className = `pill ${status}`;
     statusPill.textContent = STATUS_LABEL[status] || status;
     const index = STEP_ORDER.indexOf(status);
+    const failedAt = status === 'failed' ? failedStep(job) : -1;
     timeline.forEach((item, i) => {
       item.classList.remove('active', 'complete', 'failed');
       if (status === 'failed') {
-        if (i < STEP_ORDER.length - 1) item.classList.add('complete');
-        else item.classList.add('failed');
+        if (i < failedAt) item.classList.add('complete');
+        else if (i === failedAt) item.classList.add('failed');
         return;
       }
       if (index === -1) return;
@@ -76,21 +92,61 @@ function init(root) {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
+  function renderStats(job) {
+    const summary = job.summary || {};
+    if (job.status !== 'done' || !summary.mapped_count) {
+      statsEl.hidden = true;
+      return;
+    }
+    const tiles = [
+      ['Records', `${summary.mapped_count}`, `${summary.raw_count} raw`],
+      ['Source', summary.source || '—', summary.strategy ? `via ${STRATEGY_LABEL[summary.strategy]}` : ''],
+      ['Time', `${summary.seconds}s`, summary.render_seconds ? `render ${summary.render_seconds}s` : `sandbox ${summary.sandbox_seconds}s`],
+      ['Cost', `$${(job.cost_usd || 0).toFixed(4)}`, `${job.attempts} ${job.attempts === 1 ? 'round' : 'rounds'}`],
+    ];
+    statsEl.replaceChildren();
+    for (const [label, value, note] of tiles) {
+      const tile = document.createElement('div');
+      tile.className = 'stat';
+      const name = document.createElement('span');
+      name.className = 'stat-label';
+      name.textContent = label;
+      const big = document.createElement('strong');
+      big.className = 'stat-value';
+      big.textContent = value;
+      const small = document.createElement('span');
+      small.className = 'stat-note';
+      small.textContent = note;
+      tile.append(name, big, small);
+      statsEl.append(tile);
+    }
+    statsEl.hidden = false;
+  }
+
   function renderHeader(job) {
     jobUrl.textContent = job.url;
     jobModel.textContent = job.model;
+    const summary = job.summary || {};
     const bits = [];
-    if (job.summary && job.summary.mapped_count) {
-      bits.push(`${job.summary.mapped_count} mapped / ${job.summary.raw_count} raw`);
+    if (job.status !== 'done') {
+      if (summary.seconds) bits.push(`${summary.seconds}s`);
+      if (job.cost_usd) bits.push(`$${job.cost_usd.toFixed(4)}`);
+      if (job.attempts > 1) bits.push(`${job.attempts} attempts`);
     }
-    if (job.summary && job.summary.seconds) bits.push(`${job.summary.seconds}s`);
-    if (job.cost_usd) bits.push(`$${job.cost_usd.toFixed(4)}`);
-    if (job.attempts > 1) bits.push(`${job.attempts} attempts`);
-    if (job.summary && job.summary.mode) {
-      bits.push(job.summary.mode === 'unrestricted' ? 'not polite' : 'polite');
-    }
+    if (summary.mode) bits.push(summary.mode === 'unrestricted' ? 'not polite' : 'polite');
     jobMeta.textContent = bits.join(' · ');
-    setStatus(job.status);
+    const kind = summary.strategy === 'browser'
+      ? 'browser'
+      : summary.strategy === 'api' || summary.source === 'captured api' ? 'api' : null;
+    if (kind) {
+      strategyChip.hidden = false;
+      strategyChip.className = `chip chip-${kind}`;
+      strategyChip.textContent = kind === 'browser' ? 'headless browser' : 'captured API';
+    } else {
+      strategyChip.hidden = true;
+    }
+    renderStats(job);
+    setStatus(job.status, job);
 
     if (job.error) {
       errorBox.hidden = false;
@@ -113,6 +169,10 @@ function init(root) {
     if (!preview || !preview.rows || !preview.rows.length) {
       if (job.status === 'done') {
         previewEl.innerHTML = '<p class="muted small empty">No rows in the preview.</p>';
+      } else if (job.status === 'failed') {
+        previewEl.innerHTML =
+          '<p class="muted small empty">No preview: the build stopped before a successful run. ' +
+          'The live log says why.</p>';
       }
       return;
     }

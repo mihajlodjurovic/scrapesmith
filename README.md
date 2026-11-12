@@ -5,7 +5,7 @@
 [![CI](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml/badge.svg)](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-60%20passing-46d18c)
+![Tests](https://img.shields.io/badge/tests-114%20passing-46d18c)
 ![License](https://img.shields.io/badge/license-MIT-f5a524)
 
 ScrapeSmith is a local web app that turns a public page into a runnable Python
@@ -201,6 +201,36 @@ verified source, cost and the exact error if one occurred. Agent guides:
 [AGENTS.md](AGENTS.md) · [workflow](docs/AGENT-WORKFLOW.md) ·
 [bundle contract](docs/BUNDLE-CONTRACT.md).
 
+## Client-side rendered sites (browser fallback)
+
+Many sites send an empty `<div id="root">` and load their data with JavaScript.
+With the optional Playwright extra, ScrapeSmith handles them in three strategies,
+cheapest first:
+
+```text
+1. HTTP     plain requests bundle; if the probe looks like a JS shell, the page is
+            first rendered in headless Chromium and the model sees the result
+2. API      if HTTP failed, the browser's captured XHR/fetch JSON responses are
+            replayed with requests (no browser needed at run time)
+3. BROWSER  last resort: a Playwright scraper with the same contract, CLI,
+            proxy pool and JSONL output
+```
+
+```bash
+pip install -r requirements-browser.txt
+python -m playwright install chromium
+```
+
+The render records the JSON endpoints the page calls (method, URL, body, safe
+headers, item count and path). Cookies and auth headers are reported by name
+only and never reach the model. Every request the browser makes, including each
+redirect hop, goes through the same SSRF guard as the plain probe. No stealth
+plugins, no CAPTCHA solving.
+
+Choose `Browser fallback` in the form (`auto`, `always`, `off`), set
+`SCRAPESMITH_BROWSER`, or pass `--browser` to `scripts/build.py`. The job summary
+records the winning `strategy` and `render_seconds`.
+
 ## Politeness modes
 
 | Mode | Behaviour |
@@ -242,7 +272,15 @@ A bundle is rejected before execution if it:
 - contains Mongo/proxy/API credentials or `verify=False`;
 - misses `fetch_page`, `parse_items`, `request`, `run`, `main`, `map_listing`;
 - drops a field from `CANONICAL_KEYS`;
-- has a `runner.sh` that does not run both scripts.
+- has a `runner.sh` that does not run both scripts;
+- gets its data anywhere but the target site: web archives, search engines,
+  caches and scraping APIs are rejected, and other foreign hosts are allowed only
+  when the rendered page itself called them.
+
+A site that answers with an anti-bot challenge (for example a Cloudflare
+"just a moment" page with `403`) stops the build before any model call unless
+you supply proxies. A blocked build fails honestly; it never "succeeds" on stale
+copies of the page.
 
 The sandbox then:
 
@@ -275,11 +313,20 @@ The sandbox then:
 | `SCRAPESMITH_REASONING_EFFORT` | `low` | Keeps tokens for code |
 | `SCRAPESMITH_LLM_HEADERS` | — | Extra request headers as JSON, for gateways that require them |
 | `SCRAPESMITH_ALLOW_PRIVATE` | `0` | Allow local hosts (testing only) |
+| `SCRAPESMITH_LLM_RETRY_MAX_TOKENS` | `32000` | One retry budget when a thinking model returns only reasoning |
+| `SCRAPESMITH_PROXY_CHECK_LIMIT` | `0` | Proxies tested on an anti-bot wall before the model (0 = all) |
+| `SCRAPESMITH_PROXY_CHECK_CONCURRENCY` | `8` | Proxies tested at once |
+| `SCRAPESMITH_PROXY_CHECK_TIMEOUT` | `12` | Per-proxy timeout (s) |
+| `SCRAPESMITH_BROWSER` | `auto` | Browser fallback: `auto`, `always` or `off` |
+| `SCRAPESMITH_RENDER_TIMEOUT` | `45` | Headless render limit (s) |
+| `SCRAPESMITH_BROWSER_SANDBOX_TIMEOUT` | `300` | Proof-run limit for browser bundles (s) |
 
 ## Limitations
 
-- **No headless browser.** JavaScript shells are handled through structured
-  siblings, not rendering. Sites with neither are out of reach in v1.
+- **Browser fallback is optional.** Client-side rendered sites need the
+  Playwright extra; without it, JavaScript shells are handled only through
+  structured siblings (feeds, JSON). Login walls and CAPTCHAs stay out of reach
+  by design.
 - **Chat Completions only.** Models that require the Responses API need an
   adapter. The agent tool protocol is text or JSON, not native function calling.
 - **The sandbox is a guardrail, not a jail.** Generated code runs with a timeout
@@ -308,7 +355,7 @@ The sandbox then:
 ## Roadmap
 
 - [ ] MCP server exposing `build`, `validate` and `scaffold` as tools
-- [ ] Playwright fallback behind a flag, same bundle contract
+- [x] Playwright fallback behind a flag, same bundle contract
 - [ ] Recipe mode: emit a declarative selector spec before code
 - [ ] Scheduled re-runs with schema-drift diffs
 - [ ] Per-domain rate limiter shared across jobs

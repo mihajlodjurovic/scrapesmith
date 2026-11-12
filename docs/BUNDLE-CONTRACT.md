@@ -37,7 +37,8 @@ Also required:
 - one JSON object per line in `--out`, no wrapper array;
 - each raw item may carry `_meta` with `source`, `page`, `scraped_at`;
 - API-first: JSON or embedded state before DOM parsing;
-- no hardcoded credentials, no `verify=False`, no browser automation.
+- no hardcoded credentials, no `verify=False`, no browser automation (except
+  in the browser build below).
 
 Rejected imports: `subprocess`, `socket`, `ctypes`, `pickle`, `shutil`,
 `multiprocessing`. Rejected calls: `eval`, `exec`, `compile`, `os.system`,
@@ -126,3 +127,33 @@ as cwd. Zero mapped rows means the bundle is not done.
 2. One page produces at least one mapped record.
 3. The bundle README names the data source and the main assumption.
 4. No secrets, no `proxies.json`, no `data/` in git.
+
+## Browser build (client-side rendered sites)
+
+Produced only when plain HTTP and the captured-API replay both failed. It follows
+`app/reference/scraper_browser.py` and keeps the same contract, with these
+differences:
+
+- `request(browser, pool, url)` renders one URL in headless Chromium and returns
+  `{"url", "html", "json": [captured payloads]}`; `fetch_page(browser, pool, page)`
+  calls it. `run()` owns the Playwright lifecycle.
+- `API_PATTERN` selects captured JSON responses; `WAIT_SELECTOR`/`CARD_SELECTOR`
+  drive the rendered-DOM fallback.
+- `requirements.txt` lists `playwright` and `beautifulsoup4`; users run
+  `python -m playwright install chromium` once.
+- `scroll_until_stable(page)` handles infinite scroll: it scrolls until the item
+  count stops growing (`SCRAPESMITH_MAX_SCROLLS`, `_SCROLL_PAUSE`, `_SCROLL_STALLS`,
+  `_MAX_ITEMS`), independent of `--max-pages`. Set `INFINITE_SCROLL = False` for
+  classic `?page=N` pagination.
+- Proxies are applied per browser context; images, media and fonts are blocked.
+- Never allowed, in any build: `selenium`, `pyppeteer`, `playwright_stealth`,
+  `undetected_chromedriver`, CAPTCHA solving, logins.
+
+## Data source
+
+The data must come from the target site (its registrable domain, including
+subdomains) or from an endpoint the rendered page itself called. The validator
+rejects any bundle that references web archives, search engines, caches,
+translation proxies or scraping APIs, and any other foreign host the page did not
+call. When every route is blocked, the scraper writes zero records and NOTES say
+why; the build then fails instead of shipping stale data.

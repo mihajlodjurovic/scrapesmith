@@ -20,6 +20,7 @@ browser ──HTTP──► FastAPI ──► discovery (ssrf-guarded) ──►
 | `app/routes/pages.py` | Server-rendered UI shell |
 | `app/pipeline.py` | State machine: discover → verify/generate → validate → run → repair |
 | `app/cli.py` | Functions behind the agent-facing build/validate/scaffold scripts |
+| `app/render.py` | Optional headless Chromium render: captured XHR/fetch JSON, rendered DOM, SSRF-guarded routing |
 | `app/discovery.py` | One polite probe: robots, headers, API candidates, embedded state, repeated blocks, skeleton |
 | `app/agent.py` | Bounded tool loop; the model may fetch candidate sources before writing code |
 | `app/prompt.py` | Reference bundle + schema + probe → prompt; candidate URL list |
@@ -79,6 +80,39 @@ Selectors are not guessed by string matching; repeated blocks are found by
 grouping direct siblings on `(tag, class tuple)` and scoring by count × link
 density. That is why the report can say "20 items under `article.listing`"
 without knowing the site.
+
+## Browser fallback
+
+Optional (Playwright extra, `SCRAPESMITH_BROWSER=auto|always|off`). The
+pipeline runs up to three strategies, each with its own repair rounds:
+
+```text
+probe ──► looks like a JS shell? ──yes──► render (Chromium) ─┐
+  │                                                          ▼
+  └──────────────────────────────────────────────► 1. http   requests bundle
+                                                     │ fail
+                     render now (if not done yet) ◄──┘
+                                │
+              captured JSON API? ──yes──► 2. api      requests replay of that endpoint
+                                │                      │ fail
+                                └──────────────────► 3. browser  Playwright bundle
+```
+
+`render.render()` loads the page with images/fonts/media blocked, waits for
+network idle, scrolls twice, and records XHR/fetch responses. `render.analyze()`
+turns that into `probe["rendered"]`: `network` (URL, method, body, safe headers,
+`item_count`, `list_path`, `item_keys`), `repeat_blocks`, `json_ld` and a DOM
+skeleton. Cookie and auth header values are dropped; only their names remain.
+
+A Playwright route handler checks every request against the SSRF guard. Chromium
+does not route redirect hops, so for documents, XHR/fetch and scripts the handler
+follows redirects itself (`route.fetch(max_redirects=0)`), checks each hop and
+fulfils only the final response.
+
+The agent's fetch tool may also verify hosts the browser saw the page call (for
+example a third-party search API). Browser bundles are validated with
+`browser=True` (Playwright allowed, `playwright` required in requirements) and
+proved with `SCRAPESMITH_BROWSER_SANDBOX_TIMEOUT`.
 
 ## Agent protocol
 

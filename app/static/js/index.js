@@ -95,6 +95,15 @@ async function loadProviders() {
   updateBuildHint();
 
   hasEnvKey = Boolean(data.has_env_key);
+  const browserSelect = document.getElementById('browser');
+  browserSelect.value = data.defaults.browser || 'auto';
+  if (!data.browser_available) {
+    browserSelect.value = 'off';
+    browserSelect.disabled = true;
+    document.getElementById('browser-hint').textContent =
+      'Playwright is not installed on the server: pip install -r requirements-browser.txt ' +
+      'and python -m playwright install chromium.';
+  }
   updateKeyHint();
 }
 
@@ -123,6 +132,7 @@ function payloadFromForm() {
     api_key: document.getElementById('api_key').value.trim(),
     proxies: readProxies(document.getElementById('proxies').value),
     mode: mode ? mode.value : 'polite',
+    browser: document.getElementById('browser').value,
     fields: document.getElementById('fields').value.trim(),
     instructions: document.getElementById('instructions').value.trim(),
   };
@@ -207,12 +217,22 @@ function renderJobs(jobs) {
     meta.className = 'job-card-meta';
     const bits = [job.model, formatTime(job.created_at)];
     if (job.summary && job.summary.mapped_count) bits.push(`${job.summary.mapped_count} records`);
-    if (job.status === 'failed') bits.push('failed');
+    if (job.cost_usd) bits.push(formatCost(job.cost_usd));
     meta.textContent = bits.join(' · ');
     main.append(url, meta);
 
     const side = document.createElement('div');
     side.className = 'job-card-side';
+    const summary = job.summary || {};
+    const kind = summary.strategy === 'browser'
+      ? 'browser'
+      : summary.strategy === 'api' || summary.source === 'captured api' ? 'api' : null;
+    if (job.status === 'done' && kind) {
+      const chip = document.createElement('span');
+      chip.className = `chip chip-${kind}`;
+      chip.textContent = kind === 'browser' ? 'headless browser' : 'captured API';
+      side.append(chip);
+    }
     const pill = document.createElement('span');
     pill.className = `pill ${job.status}`;
     pill.textContent = STATUS_LABEL[job.status] || job.status;

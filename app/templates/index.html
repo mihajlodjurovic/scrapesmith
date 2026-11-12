@@ -2,18 +2,49 @@
 
 {% block content %}
 <section class="hero">
-  <span class="eyebrow"><span class="pulse-dot"></span> URL in → scraper + mapper out</span>
-  <h1>Point it at a page.<br><span class="gradient-text">Get a scraper you'd ship.</span></h1>
-  <p class="hero-sub">
-    One public URL, one model key, an optional proxy pool. ScrapeSmith verifies where the
-    data actually lives, writes a scraper and a mapper in your house style, then proves the
-    bundle runs before you download it.
-  </p>
-  <ul class="hero-points">
-    <li>Agent checks JSON, RSS and embedded state</li>
-    <li>Proxy pool, 0.2s delay, retries, robots-aware</li>
-    <li>Sandbox run with preview and fill rates</li>
-  </ul>
+  <div class="hero-copy">
+    <span class="eyebrow"><span class="pulse-dot"></span> URL in → scraper + mapper out</span>
+    <h1>Point it at a page.<br><span class="gradient-text">Get a scraper you'd ship.</span></h1>
+    <p class="hero-sub">
+      One public URL, one model key, an optional proxy pool. ScrapeSmith verifies where the
+      data actually lives, writes a scraper and a mapper in your house style, then proves the
+      bundle runs before you download it.
+    </p>
+    <ul class="hero-points">
+      <li>Agent checks JSON, RSS and embedded state</li>
+      <li>Headless browser for JavaScript sites</li>
+      <li>Proxy pool, 0.2s delay, retries, robots-aware</li>
+      <li>Sandbox run with preview and fill rates</li>
+    </ul>
+  </div>
+
+  <aside class="ladder" aria-label="How a build picks its strategy">
+    <div class="ladder-head">
+      <span class="section-label">Strategy ladder</span>
+      <span class="muted small">cheapest first</span>
+    </div>
+    <ol class="ladder-steps">
+      <li>
+        <span class="rung">1</span>
+        <div><strong>Plain HTTP</strong><span>Server-rendered HTML, feeds, embedded JSON.</span></div>
+        <span class="tag tag-fast">ms / page</span>
+      </li>
+      <li>
+        <span class="rung">2</span>
+        <div><strong>Captured API</strong><span>Chromium watches the page's XHR calls; the scraper replays them with requests.</span></div>
+        <span class="tag tag-fast">ms / page</span>
+      </li>
+      <li>
+        <span class="rung">3</span>
+        <div><strong>Headless browser</strong><span>Playwright scraper with scrolling, for pages that only work in a browser.</span></div>
+        <span class="tag tag-slow">s / page</span>
+      </li>
+      <li class="ladder-stop">
+        <span class="rung">✕</span>
+        <div><strong>Blocked?</strong><span>Anti-bot walls stop the build before any tokens are spent. No archives, no fakes.</span></div>
+      </li>
+    </ol>
+  </aside>
 </section>
 
 <section class="build-grid" id="new">
@@ -52,6 +83,15 @@
             </label>
           </div>
         </div>
+        <div class="field">
+          <label for="browser">Browser fallback</label>
+          <select id="browser" name="browser">
+            <option value="auto">Auto: render JavaScript pages when needed</option>
+            <option value="always">Always render the page in a headless browser</option>
+            <option value="off">Off: plain HTTP only</option>
+          </select>
+          <p class="hint" id="browser-hint">For client-side rendered sites. ScrapeSmith first looks for the JSON API the page calls, and writes a Playwright scraper only as a last resort.</p>
+        </div>
       </div>
 
       <div class="form-section">
@@ -63,7 +103,7 @@
           </div>
           <div class="field">
             <label for="model">Model</label>
-            <input id="model" name="model" list="model-options" autocomplete="off" required>
+            <input id="model" name="model" type="text" list="model-options" autocomplete="off" required>
             <datalist id="model-options"></datalist>
           </div>
         </div>
@@ -121,7 +161,7 @@
     <div class="panel compact">
       <h2>What happens</h2>
       <ol class="steps">
-        <li><strong>Probe</strong><span>robots.txt, headers, API candidates, embedded state, repeated blocks.</span></li>
+        <li><strong>Probe</strong><span>robots.txt, headers, API candidates, embedded state, repeated blocks. JavaScript shells are rendered in Chromium.</span></li>
         <li><strong>Verify</strong><span>The agent fetches candidate sources before writing any code.</span></li>
         <li><strong>Generate</strong><span>Your template + the verified source go to the model.</span></li>
         <li><strong>Prove it</strong><span>Validation, sandbox run, preview and field fill rates.</span></li>

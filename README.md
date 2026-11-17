@@ -5,7 +5,7 @@
 [![CI](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml/badge.svg)](https://github.com/mihajlodjurovic/scrapesmith/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-114%20passing-46d18c)
+![Tests](https://img.shields.io/badge/tests-110%20passing-46d18c)
 ![License](https://img.shields.io/badge/license-MIT-f5a524)
 
 ScrapeSmith is a local web app that turns a public page into a runnable Python
@@ -243,7 +243,7 @@ scraper generator, not a ban-evasion tool.
 
 ## Evaluation snapshot
 
-Six targets, one model, mixed modes, no manual fixes:
+Seven targets, one model, mixed modes, no manual fixes:
 
 | Target | Shape | Mode | Outcome | Records | Cost |
 |---|---|---|---|---:|---:|
@@ -253,11 +253,13 @@ Six targets, one model, mixed modes, no manual fixes:
 | `jsonplaceholder.typicode.com/posts` | plain JSON | polite | done | 100 / 100 | $0.0078 |
 | `autoscout24.com/lst` | SPA, robots disallow | polite | policy stop (expected) | 0 | $0.0000 |
 | YouTube watch page | detail page, embedded JSON | polite | done | 1 / 1 | $0.0176 |
+| `sauto.cz/inzerce/osobni` | React shell + JSON API | unrestricted | done | 100 / 100 | $0.0115 |
 
 Costs are for `deepseek-v4.1-flash`; frontier models are roughly 10-50x more
 expensive per build. Reddit used `unrestricted` mode only to test feed discovery;
 the default `polite` mode refuses that path. Run the override only on sites you
-have permission to scrape.
+have permission to scrape. `sauto.cz` was run with explicit permission; its
+`robots.txt` also disallows crawlers.
 
 Method, threats to validity and reproduction commands:
 [docs/EVALUATION.md](docs/EVALUATION.md). The same AutoScout page, run explicitly
@@ -335,7 +337,7 @@ The sandbox then:
 - **One page of proof.** The sandbox proves the bundle runs, not that it crawls a
   whole catalogue correctly.
 - **Single node.** SQLite and a local job directory; no queue or shared storage.
-- **Small evaluation.** Six targets, one model, one day. Treat the numbers as a
+- **Small evaluation.** Seven targets, one model, one day. Treat the numbers as a
   smoke test, not a benchmark.
 
 ## Documentation

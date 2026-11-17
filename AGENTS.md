@@ -116,7 +116,7 @@ If the sandbox produced zero records, inspect in this order:
 | `app/reference/` | Golden scraper, mapper, runner, schema — the contract |
 | `app/cli.py` | Functions behind `scripts/build.py`, `validate_bundle.py`, `scaffold_bundle.py` |
 | `docs/` | Architecture, decisions, evaluation, workflow, contract |
-| `tests/` | 114 tests (browser tests skip without Playwright); run `pytest -q` before claiming success |
+| `tests/` | 110 passed, 5 skipped (browser tests skip without Playwright); run `pytest -q` before claiming success |
 
 ## Definition of done
 

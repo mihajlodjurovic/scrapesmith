@@ -6,6 +6,7 @@ from app.discovery import (
     _api_candidates,
     _embedded_state,
     _repeat_blocks,
+    _request_headers,
     _skeleton,
     html_signals,
 )
@@ -80,3 +81,11 @@ def test_embedded_state_recognises_youtube_blobs() -> None:
     soup = BeautifulSoup(html, "html.parser")
     kinds = [item["kind"] for item in _embedded_state(html, soup)]
     assert "YouTube player response" in kinds
+
+
+def test_minimal_headers_drop_consent_trigger() -> None:
+    full = _request_headers()
+    minimal = _request_headers(minimal=True)
+    assert "Accept-Language" in full and "Accept" in full
+    assert "Accept-Language" not in minimal
+    assert minimal["User-Agent"]

@@ -134,16 +134,24 @@ async def ssrf_guard(request: httpx.Request) -> None:
         raise DiscoveryError(f"{exc} (blocked {request.url.host})") from None
 
 
+def _request_headers(minimal: bool = False) -> dict[str, str]:
+    headers = {"User-Agent": USER_AGENT}
+    if not minimal:
+        headers["Accept"] = (
+            "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8"
+        )
+        headers["Accept-Language"] = "en-US,en;q=0.9"
+    return headers
+
+
 async def _fetch_once(
-    url: str, proxy: str | None, timeout: float = FETCH_TIMEOUT_SECONDS
+    url: str,
+    proxy: str | None,
+    timeout: float = FETCH_TIMEOUT_SECONDS,
+    minimal: bool = False,
 ) -> tuple[httpx.Response, str]:
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
     kwargs: dict[str, Any] = {
-        "headers": headers,
+        "headers": _request_headers(minimal),
         "timeout": timeout,
         "follow_redirects": True,
         "max_redirects": 5,
@@ -161,6 +169,15 @@ async def _fetch(url: str, pool: ProxyPool) -> tuple[httpx.Response, str]:
     for proxy in pool.attempts(3):
         try:
             response, used = await _fetch_once(url, proxy)
+        except httpx.TooManyRedirects:
+            # Consent/login flows can loop when non-browser headers are present.
+            # Retry once with a minimal header set before spending another proxy.
+            try:
+                response, used = await _fetch_once(url, proxy, minimal=True)
+            except Exception as exc:  # noqa: BLE001 - try the next proxy
+                pool.report(proxy, False)
+                last_error = exc
+                continue
         except Exception as exc:  # network, proxy auth, DNS
             pool.report(proxy, False)
             last_error = exc

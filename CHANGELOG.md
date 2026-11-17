@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Discovery retries with a minimal header set when a consent/login flow causes a
+  redirect loop. `sauto.cz` loops when `Accept-Language` is present; a plain
+  `User-Agent` request succeeds.
+- `scripts/build.py` and `scripts/validate_bundle.py` print UTF-8 on Windows,
+  so non-ASCII results no longer crash the CLI.
+- Evaluation: `sauto.cz`, 100/100 records via its JSON search API.
+
 ## 0.2.0 — 2026-11-12
 
 Browser fallback for client-side rendered sites.
